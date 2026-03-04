@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Search, Eye, Check, X as XIcon, ChevronLeft, ChevronRight, Clock, Truck, Package } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Eye, Check, X as XIcon, ChevronLeft, ChevronRight, Clock, Truck, Package, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import './orders.css';
 
@@ -47,6 +47,22 @@ export default function OrdersPage() {
             });
             fetchOrders();
         } catch (e) { console.error(e); }
+    }
+
+    async function deleteOrder(o) {
+        if (!confirm(`Yakin ingin menghapus pesanan "${o.order_number}"?\nAksi ini tidak bisa dibatalkan!`)) return;
+        try {
+            const res = await fetch(`/api/orders/${o.id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchOrders();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Gagal menghapus pesanan');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Terjadi kesalahan saat menghapus pesanan');
+        }
     }
 
     return (
@@ -110,6 +126,7 @@ export default function OrdersPage() {
                                                 {o.status === 'approved' && (
                                                     <button className="btn btn-secondary btn-sm" onClick={() => updateStatus(o.id, 'completed')} title="Selesai"><Package size={14} /></button>
                                                 )}
+                                                <button className="btn btn-ghost btn-sm" onClick={() => deleteOrder(o)} title="Hapus Pesanan"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>

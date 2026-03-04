@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Users, GitBranch, ShoppingCart, MapPin,
     Megaphone, UserPlus, BarChart3, Settings, ChevronLeft,
-    ChevronRight, Zap, Package
+    ChevronRight, Zap, Package, UserCog
 } from 'lucide-react';
 import { useAuth } from '@/components/AppShell';
 import './Sidebar.css';
@@ -19,12 +19,15 @@ const menuItems = [
     { href: '/campaigns', icon: Megaphone, label: 'Kampanye' },
     { href: '/leads', icon: UserPlus, label: 'Leads' },
     { href: '/reports', icon: BarChart3, label: 'Laporan' },
+    { href: '/users', icon: UserCog, label: 'Kelola User', adminOnly: true },
     { href: '/settings', icon: Settings, label: 'Pengaturan' },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
     const pathname = usePathname();
-    const { settings } = useAuth();
+    const { user, settings } = useAuth();
+
+    const visibleItems = menuItems.filter(item => !item.adminOnly || user?.role === 'admin');
 
     return (
         <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -57,7 +60,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             </div>
 
             <nav className="sidebar-nav">
-                {menuItems.map((item) => {
+                {visibleItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
                     return (

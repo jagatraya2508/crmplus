@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Users, Building, Mail, Phone, MapPin, Edit, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Filter, Users, Building, Mail, Phone, MapPin, Edit, Trash2, X, ChevronLeft, ChevronRight, Crosshair, Loader } from 'lucide-react';
 import './customers.css';
 
 const categories = [
@@ -35,9 +35,35 @@ export default function CustomersPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [gettingLocation, setGettingLocation] = useState(false);
     const [form, setForm] = useState({
         name: '', company: '', email: '', phone: '', address: '', city: '', province: '', postal_code: '', category: 'prospect', notes: '', latitude: '', longitude: '',
     });
+
+    function generateLocation() {
+        if (!navigator.geolocation) {
+            alert('Browser tidak mendukung Geolocation');
+            return;
+        }
+        setGettingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setForm(prev => ({
+                    ...prev,
+                    latitude: position.coords.latitude.toFixed(6),
+                    longitude: position.coords.longitude.toFixed(6),
+                }));
+                setGettingLocation(false);
+            },
+            (error) => {
+                setGettingLocation(false);
+                if (error.code === 1) alert('Akses lokasi ditolak. Izinkan akses lokasi di browser.');
+                else if (error.code === 2) alert('Lokasi tidak tersedia. Pastikan GPS aktif.');
+                else alert('Gagal mendapatkan lokasi. Coba lagi.');
+            },
+            { enableHighAccuracy: true, timeout: 15000 }
+        );
+    }
 
     useEffect(() => {
         fetchCustomers();
@@ -194,7 +220,7 @@ export default function CustomersPage() {
             )}
 
             {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                <div className="modal-overlay">
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700 }}>
                         <div className="modal-header">
                             <h3>{editing ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</h3>
@@ -244,13 +270,30 @@ export default function CustomersPage() {
                                             <option value="vip">VIP</option>
                                         </select>
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Latitude</label>
-                                        <input className="form-control" type="number" step="any" value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })} placeholder="-6.xxxx" />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Longitude</label>
-                                        <input className="form-control" type="number" step="any" value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })} placeholder="106.xxxx" />
+                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <label className="form-label" style={{ margin: 0 }}>Koordinat Lokasi</label>
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary btn-sm"
+                                                onClick={generateLocation}
+                                                disabled={gettingLocation}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', padding: '6px 12px' }}
+                                            >
+                                                {gettingLocation ? <Loader size={14} className="spin" /> : <Crosshair size={14} />}
+                                                {gettingLocation ? 'Mendapatkan lokasi...' : 'Generate Lokasi'}
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                            <div>
+                                                <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Latitude</label>
+                                                <input className="form-control" type="number" step="any" value={form.latitude} onChange={e => setForm({ ...form, latitude: e.target.value })} placeholder="-6.xxxx" />
+                                            </div>
+                                            <div>
+                                                <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Longitude</label>
+                                                <input className="form-control" type="number" step="any" value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })} placeholder="106.xxxx" />
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                         <label className="form-label">Catatan</label>

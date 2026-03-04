@@ -65,3 +65,36 @@ export async function PUT(request, { params }) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+// DELETE /api/orders/[id] - Delete order permanently
+export async function DELETE(request, { params }) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const { id } = await params;
+
+        const order = await getOne('SELECT id, user_id, status, order_number FROM orders WHERE id = $1', [id]);
+        if (!order) {
+            return NextResponse.json({ error: 'Pesanan tidak ditemukan' }, { status: 404 });
+        }
+
+        // Sales can only delete their own draft/pending orders
+        if (user.role === 'sales') {
+            if (order.user_id !== user.id) {
+                return NextResponse.json({ error: 'Anda tidak bisa menghapus pesanan orang lain' }, { status: 403 });
+            }
+            if (!['draft', 'pending', 'rejected', 'cancelled'].includes(order.status)) {
+                return NextResponse.json({ error: 'Pesanan yang sudah diproses tidak bisa dihapus' }, { status: 400 });
+            }
+        }
+
+        // Delete order items first, then the order
+        await query('DELETE FROM order_items WHERE order_id = $1', [id]);
+        await query('DELETE FROM orders WHERE id = $1', [id]);
+
+        return NextResponse.json({ success: true, message: `Pesanan ${order.order_number} berhasil dihapus` });
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        return NextResponse.json({ error: 'Gagal menghapus pesanan' }, { status: 500 });
+    }
+}
