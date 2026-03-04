@@ -1,0 +1,184 @@
+.dashboard .header-date {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 8px 16px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.stat-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.stat-change.up {
+    color: var(--accent-success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.stat-change.down {
+    color: var(--accent-danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 24px;
+}
+
+/* Activities */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+
+.activity-dot.visit {
+    background: var(--accent-success);
+}
+
+.activity-dot.call {
+    background: var(--accent-info);
+}
+
+.activity-dot.meeting {
+    background: var(--accent-warning);
+}
+
+.activity-dot.email {
+    background: var(--accent-primary);
+}
+
+.activity-dot.note {
+    background: var(--text-tertiary);
+}
+
+.activity-dot.task {
+    background: var(--accent-secondary);
+}
+
+.activity-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.activity-title {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.activity-meta {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.empty-mini {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+/* Quick Actions */
+.quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.quick-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all var(--transition-base);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.quick-action.purple {
+    background: rgba(99, 102, 241, 0.08);
+    color: var(--accent-primary-light);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.quick-action.purple:hover {
+    background: rgba(99, 102, 241, 0.15);
+    transform: translateY(-1px);
+}
+
+.quick-action.green {
+    background: rgba(16, 185, 129, 0.08);
+    color: var(--accent-success);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.quick-action.green:hover {
+    background: rgba(16, 185, 129, 0.15);
+    transform: translateY(-1px);
+}
+
+.quick-action.blue {
+    background: rgba(59, 130, 246, 0.08);
+    color: var(--accent-info);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.quick-action.blue:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+}
+
+.quick-action.orange {
+    background: rgba(245, 158, 11, 0.08);
+    color: var(--accent-warning);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.quick-action.orange:hover {
+    background: rgba(245, 158, 11, 0.15);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+}

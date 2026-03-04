@@ -1,0 +1,106 @@
+.pipeline-board {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    min-height: 400px;
+}
+
+.pipeline-column {
+    min-width: 280px;
+    flex: 1;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+}
+
+.pipeline-column-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-top: 3px solid var(--accent-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pipeline-column-header h4 {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.pipeline-cards {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pipeline-card {
+    background: var(--gradient-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 14px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.pipeline-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+}
+
+.pipeline-card h5 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.pipeline-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.pipeline-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pipeline-card-user {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.pipeline-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.pipeline-add-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary-light);
+    background: rgba(99, 102, 241, 0.05);
+}
