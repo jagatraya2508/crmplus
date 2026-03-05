@@ -215,6 +215,20 @@ export async function initDatabase() {
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS user_locations (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      latitude DOUBLE PRECISION NOT NULL,
+      longitude DOUBLE PRECISION NOT NULL,
+      accuracy DOUBLE PRECISION,
+      speed DOUBLE PRECISION,
+      heading DOUBLE PRECISION,
+      recorded_at TIMESTAMP DEFAULT NOW(),
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_locations_user_id ON user_locations(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_locations_recorded_at ON user_locations(recorded_at);
+
     -- Insert default pipeline stages if not exists
     INSERT INTO pipeline_stages (name, color, sort_order) 
     SELECT * FROM (VALUES 

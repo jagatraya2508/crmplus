@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import TopBar from '@/components/TopBar';
 import ThemeProvider from '@/components/ThemeProvider';
+import GpsTracker from '@/components/GpsTracker';
 
 const AuthContext = createContext(null);
 
@@ -109,6 +110,7 @@ export default function AppShell({ children }) {
                             {children}
                         </main>
                     </div>
+                    {user.role === 'sales' && <GpsTracker userId={user.id} />}
                 </div>
             </AuthContext.Provider>
         </ThemeProvider>

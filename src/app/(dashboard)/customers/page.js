@@ -294,6 +294,26 @@ export default function CustomersPage() {
                                                 <input className="form-control" type="number" step="any" value={form.longitude} onChange={e => setForm({ ...form, longitude: e.target.value })} placeholder="106.xxxx" />
                                             </div>
                                         </div>
+                                        {form.latitude && form.longitude && (
+                                            <div style={{ marginTop: 12, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                                                <iframe
+                                                    key={`${form.latitude}-${form.longitude}`}
+                                                    width="100%"
+                                                    height="200"
+                                                    style={{ border: 0, display: 'block' }}
+                                                    loading="lazy"
+                                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(form.longitude) - 0.005}%2C${parseFloat(form.latitude) - 0.003}%2C${parseFloat(form.longitude) + 0.005}%2C${parseFloat(form.latitude) + 0.003}&layer=mapnik&marker=${form.latitude}%2C${form.longitude}`}
+                                                />
+                                                <a
+                                                    href={`https://www.openstreetmap.org/?mlat=${form.latitude}&mlon=${form.longitude}#map=16/${form.latitude}/${form.longitude}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{ display: 'block', padding: '6px 12px', fontSize: '0.75rem', color: 'var(--accent-primary-light)', textAlign: 'center', background: 'var(--bg-glass)' }}
+                                                >
+                                                    🗺️ Buka di OpenStreetMap
+                                                </a>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                         <label className="form-label">Catatan</label>

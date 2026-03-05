@@ -56,7 +56,31 @@ export async function DELETE(request, { params }) {
         }
 
         const { id } = await params;
-        await query('DELETE FROM customers WHERE id = $1', [id]);
+
+        // Hapus semua data terkait pelanggan dalam transaksi
+        const { getPool } = await import('@/lib/db');
+        const client = await getPool().connect();
+        try {
+            await client.query('BEGIN');
+            // Hapus order_items dari orders milik pelanggan ini
+            await client.query(`
+                DELETE FROM order_items WHERE order_id IN (
+                    SELECT id FROM orders WHERE customer_id = $1
+                )
+            `, [id]);
+            await client.query('DELETE FROM orders WHERE customer_id = $1', [id]);
+            await client.query('DELETE FROM opportunities WHERE customer_id = $1', [id]);
+            await client.query('DELETE FROM activities WHERE customer_id = $1', [id]);
+            await client.query('DELETE FROM visits WHERE customer_id = $1', [id]);
+            await client.query('DELETE FROM customers WHERE id = $1', [id]);
+            await client.query('COMMIT');
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+
         return NextResponse.json({ success: true });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

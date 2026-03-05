@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Users, GitBranch, ShoppingCart, MapPin,
     Megaphone, UserPlus, BarChart3, Settings, ChevronLeft,
-    ChevronRight, Zap, Package, UserCog
+    ChevronRight, Zap, Package, UserCog, Radio
 } from 'lucide-react';
 import { useAuth } from '@/components/AppShell';
 import './Sidebar.css';
@@ -16,6 +16,7 @@ const menuItems = [
     { href: '/orders', icon: ShoppingCart, label: 'Pesanan' },
     { href: '/products', icon: Package, label: 'Produk' },
     { href: '/visits', icon: MapPin, label: 'Kunjungan' },
+    { href: '/tracking', icon: Radio, label: 'Live Tracking', adminOnly: true },
     { href: '/campaigns', icon: Megaphone, label: 'Kampanye' },
     { href: '/leads', icon: UserPlus, label: 'Leads' },
     { href: '/reports', icon: BarChart3, label: 'Laporan' },

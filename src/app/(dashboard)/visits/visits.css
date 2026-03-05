@@ -94,8 +94,89 @@
     border-left: 3px solid var(--accent-primary);
 }
 
+.visit-coords {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.coord-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-family: 'Courier New', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+}
+
+.coord-tag.checkin {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: var(--accent-success);
+}
+
+.coord-tag.checkout {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.25);
+    color: var(--accent-warning);
+}
+
+.coord-map-btn {
+    font-size: 0.75rem !important;
+    padding: 4px 10px !important;
+    border-radius: 20px !important;
+    color: var(--accent-primary-light) !important;
+}
+
+.visit-map-preview {
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.visit-map-links {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    padding: 8px 12px;
+    background: var(--bg-glass);
+    font-size: 0.75rem;
+}
+
+.visit-map-links a {
+    color: var(--accent-primary-light);
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.visit-map-links a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
 .visit-actions {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* Check-in Page */
