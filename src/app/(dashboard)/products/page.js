@@ -59,10 +59,11 @@ export default function ProductsPage() {
             ) : (
                 <div className="table-container">
                     <table className="table">
-                        <thead><tr><th>Nama</th><th>SKU</th><th>Harga</th><th>Stok</th><th>Satuan</th><th>Aksi</th></tr></thead>
+                        <thead><tr><th>Product ID</th><th>Nama</th><th>SKU</th><th>Harga</th><th>Stok</th><th>Satuan</th><th>Aksi</th></tr></thead>
                         <tbody>
                             {products.map(p => (
                                 <tr key={p.id}>
+                                    <td>{p.product_code || '-'}</td>
                                     <td><strong>{p.name}</strong>{p.category && <span className="text-sm text-muted" style={{ display: 'block' }}>{p.category}</span>}</td>
                                     <td>{p.sku || '-'}</td>
                                     <td>Rp {parseFloat(p.price).toLocaleString('id-ID')}</td>
@@ -77,7 +78,7 @@ export default function ProductsPage() {
             )}
 
             {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                <div className="modal-overlay">
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header"><h3>{editing ? 'Edit Produk' : 'Tambah Produk'}</h3><button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}><X size={18} /></button></div>
                         <form onSubmit={handleSubmit}>

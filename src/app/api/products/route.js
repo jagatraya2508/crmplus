@@ -17,7 +17,7 @@ export async function GET(request) {
         let idx = 1;
 
         if (search) {
-            where.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx})`);
+            where.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx} OR p.product_code ILIKE $${idx})`);
             params.push(`%${search}%`);
             idx++;
         }
@@ -43,9 +43,23 @@ export async function POST(request) {
         const { name, sku, description, price, unit, category, stock } = body;
         if (!name) return NextResponse.json({ error: 'Nama produk wajib diisi' }, { status: 400 });
 
+        // Auto-generate product_code (e.g., PR001)
+        // Ensure we only match PR followed by exactly 3 digits (PR___) to avoid conflicting with PRD-XXX formats
+        const maxCodeResult = await query(
+            "SELECT product_code FROM products WHERE product_code LIKE 'PR___' AND product_code NOT LIKE 'PRD%' ORDER BY product_code DESC LIMIT 1"
+        );
+        let nextCode = 'PR001';
+        if (maxCodeResult.rows.length > 0 && maxCodeResult.rows[0].product_code) {
+            const currentCode = maxCodeResult.rows[0].product_code;
+            const numericPart = parseInt(currentCode.substring(2));
+            if (!isNaN(numericPart)) {
+                nextCode = `PR${String(numericPart + 1).padStart(3, '0')}`;
+            }
+        }
+
         const result = await query(
-            'INSERT INTO products (name, sku, description, price, unit, category, stock) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [name, sku || null, description || null, price || 0, unit || 'pcs', category || null, stock || 0]
+            'INSERT INTO products (product_code, name, sku, description, price, unit, category, stock) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [nextCode, name, sku || null, description || null, price || 0, unit || 'pcs', category || null, stock || 0]
         );
         return NextResponse.json({ product: result.rows[0] }, { status: 201 });
     } catch (error) {

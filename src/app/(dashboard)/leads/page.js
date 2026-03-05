@@ -63,7 +63,7 @@ export default function LeadsPage() {
             )}
 
             {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                <div className="modal-overlay">
                     <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header"><h3>{editing ? 'Edit' : 'Tambah'} Lead</h3><button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}><X size={18} /></button></div>
                         <form onSubmit={handleSubmit}>

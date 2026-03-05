@@ -81,6 +81,7 @@ export async function initDatabase() {
 
     CREATE TABLE IF NOT EXISTS products (
       id SERIAL PRIMARY KEY,
+      product_code VARCHAR(100) UNIQUE,
       name VARCHAR(255) NOT NULL,
       sku VARCHAR(100) UNIQUE,
       description TEXT,
@@ -92,6 +93,8 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE;
 
     CREATE TABLE IF NOT EXISTS pipeline_stages (
       id SERIAL PRIMARY KEY,

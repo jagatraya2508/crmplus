@@ -1,8 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { MapPin, Clock, LogIn, LogOut, Search, User, Calendar, Eye, ChevronLeft, ChevronRight, Trash2, Edit, X, Navigation } from 'lucide-react';
+import { MapPin, Clock, LogIn, LogOut, Search, User, Calendar, Eye, ChevronLeft, ChevronRight, Trash2, Edit, X, Navigation, Download, FileText } from 'lucide-react';
 import { useAuth } from '@/components/AppShell';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import './visits.css';
 
 export default function VisitsPage() {
@@ -131,6 +134,70 @@ export default function VisitsPage() {
         return `${hours}j ${mins}m`;
     }
 
+    async function getFullData() {
+        const params = new URLSearchParams({ limit: 9999 });
+        if (dateFilter) params.set('date', dateFilter);
+        if (statusFilter) params.set('status', statusFilter);
+        const res = await fetch(`/api/visits?${params}`);
+        const data = await res.json();
+        return data.visits || [];
+    }
+
+    async function exportToExcel() {
+        const fullData = await getFullData();
+        const exportData = fullData.map(v => ({
+            'Nama Pelanggan': v.customer_name || '-',
+            'Perusahaan/Alamat': v.customer_company || v.customer_address || '-',
+            'Sales': v.user_name || '-',
+            'Status': v.status === 'checked_in' ? 'Check-in' : 'Selesai',
+            'Waktu Check-in': v.checkin_time ? new Date(v.checkin_time).toLocaleString('id-ID') : '-',
+            'Waktu Check-out': v.checkout_time ? new Date(v.checkout_time).toLocaleString('id-ID') : '-',
+            'Durasi': formatDuration(v.checkin_time, v.checkout_time),
+            'Catatan': v.notes || '-',
+            'Ringkasan': v.summary || '-',
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Kunjungan");
+        XLSX.writeFile(wb, "Laporan_Kunjungan.xlsx");
+    }
+
+    async function exportToPDF() {
+        const fullData = await getFullData();
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("Laporan Kunjungan Sales", 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tanggal: ${dateFilter || 'Semua Waktu'}`, 14, 22);
+
+        const tableColumn = ["Pelanggan", "Sales", "Status", "Check-in", "Check-out", "Durasi"];
+        const tableRows = [];
+
+        fullData.forEach(v => {
+            const rowData = [
+                v.customer_name || '-',
+                v.user_name || '-',
+                v.status === 'checked_in' ? 'Check-in' : 'Selesai',
+                v.checkin_time ? new Date(v.checkin_time).toLocaleString('id-ID') : '-',
+                v.checkout_time ? new Date(v.checkout_time).toLocaleString('id-ID') : '-',
+                formatDuration(v.checkin_time, v.checkout_time)
+            ];
+            tableRows.push(rowData);
+        });
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 28,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+
+        doc.save("Laporan_Kunjungan.pdf");
+    }
+
     return (
         <div>
             <div className="page-header">
@@ -153,9 +220,17 @@ export default function VisitsPage() {
                     <option value="checked_in">Check-in</option>
                     <option value="checked_out">Check-out</option>
                 </select>
-                <Link href="/visits/map" className="btn btn-secondary">
-                    <MapPin size={16} /> Lihat Peta
-                </Link>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                    <button className="btn btn-outline" onClick={exportToExcel} title="Export ke Excel">
+                        <FileText size={16} /> Excel
+                    </button>
+                    <button className="btn btn-outline" onClick={exportToPDF} title="Export ke PDF">
+                        <Download size={16} /> PDF
+                    </button>
+                    <Link href="/visits/map" className="btn btn-secondary">
+                        <MapPin size={16} /> Lihat Peta
+                    </Link>
+                </div>
             </div>
 
             {loading ? (
@@ -283,7 +358,7 @@ export default function VisitsPage() {
 
             {/* Edit Modal */}
             {showEditModal && editData && (
-                <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+                <div className="modal-overlay">
                     <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
                         <div className="modal-header">
                             <h3>Edit Kunjungan</h3>

@@ -8,11 +8,11 @@ export async function PUT(request, { params }) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { id } = await params;
         const body = await request.json();
-        const { name, sku, description, price, unit, category, stock, is_active } = body;
+        const { product_code, name, sku, description, price, unit, category, stock, is_active } = body;
 
         const result = await query(
-            `UPDATE products SET name=$1, sku=$2, description=$3, price=$4, unit=$5, category=$6, stock=$7, is_active=$8, updated_at=NOW() WHERE id=$9 RETURNING *`,
-            [name, sku, description, price, unit, category, stock, is_active !== false, id]
+            `UPDATE products SET product_code=$1, name=$2, sku=$3, description=$4, price=$5, unit=$6, category=$7, stock=$8, is_active=$9, updated_at=NOW() WHERE id=$10 RETURNING *`,
+            [product_code, name, sku, description, price, unit, category, stock, is_active !== false, id]
         );
         return NextResponse.json({ product: result.rows[0] });
     } catch (error) {

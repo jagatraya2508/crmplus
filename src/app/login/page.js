@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Zap, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import './login.css';
@@ -11,6 +11,24 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
+    const [appLogo, setAppLogo] = useState(null);
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch('/api/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.app_logo) {
+                        setAppLogo(data.app_logo);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch settings:', err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -53,7 +71,20 @@ export default function LoginPage() {
                 <div className="login-card">
                     <div className="login-header">
                         <div className="login-logo">
-                            <Zap size={28} />
+                            {appLogo ? (
+                                <img
+                                    src={appLogo}
+                                    alt="App Logo"
+                                    style={{
+                                        width: 48,
+                                        height: 48,
+                                        objectFit: 'contain',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                />
+                            ) : (
+                                <Zap size={28} />
+                            )}
                         </div>
                         <h1>CRM<span>Plus</span></h1>
                         <p>{isRegister ? 'Buat akun baru' : 'Masuk ke akun Anda'}</p>

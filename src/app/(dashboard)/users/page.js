@@ -290,7 +290,7 @@ export default function UsersPage() {
 
             {/* Modal Form */}
             {modalOpen && (
-                <div className="modal-overlay" onClick={closeModal}>
+                <div className="modal-overlay">
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <h3>{editUser ? 'Edit User' : 'Tambah User Baru'}</h3>
