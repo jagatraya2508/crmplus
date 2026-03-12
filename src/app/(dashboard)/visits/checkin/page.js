@@ -37,8 +37,11 @@ export default function CheckinPage() {
                 setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
             },
             (err) => {
-                console.error('GPS error:', err);
+                console.warn('GPS peringatan:', err.message);
                 setGpsStatus('error');
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                    setError('Akses GPS diblokir karena tidak menggunakan HTTPS. Silakan gunakan link LocalTunnel.');
+                }
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );

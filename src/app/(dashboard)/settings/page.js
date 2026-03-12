@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AppShell';
 import { useTheme, THEMES } from '@/components/ThemeProvider';
 import { Settings as SettingsIcon, User, Building, Shield, Palette, Check, Image as ImageIcon } from 'lucide-react';
@@ -8,6 +8,52 @@ export default function SettingsPage() {
     const { user, settings, refreshSettings } = useAuth();
     const { theme, setTheme } = useTheme();
     const [uploading, setUploading] = useState(false);
+    const [savingSmtp, setSavingSmtp] = useState(false);
+    const [smtpForm, setSmtpForm] = useState({
+        smtp_host: '',
+        smtp_port: '',
+        smtp_user: '',
+        smtp_pass: '',
+        smtp_from: ''
+    });
+
+    useEffect(() => {
+        if (settings) {
+            setSmtpForm({
+                smtp_host: settings.smtp_host || '',
+                smtp_port: settings.smtp_port || '',
+                smtp_user: settings.smtp_user || '',
+                smtp_pass: settings.smtp_pass || '',
+                smtp_from: settings.smtp_from || ''
+            });
+        }
+    }, [settings]);
+
+    const handleSmtpSave = async () => {
+        setSavingSmtp(true);
+        try {
+            const promises = Object.entries(smtpForm).map(([key, value]) => 
+                fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, value }),
+                })
+            );
+            
+            const results = await Promise.all(promises);
+            if (results.every(r => r.ok)) {
+                await refreshSettings();
+                alert('Konfigurasi SMTP berhasil disimpan');
+            } else {
+                alert('Beberapa pengaturan gagal disimpan');
+            }
+        } catch (error) {
+            console.error('Error saving SMTP settings:', error);
+            alert('Gagal menyimpan konfigurasi SMTP');
+        } finally {
+            setSavingSmtp(false);
+        }
+    };
 
     const handleLogoUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -58,50 +104,67 @@ export default function SettingsPage() {
                         <div className="card-header"><h3 className="card-title"><ImageIcon size={18} /> Pengaturan Aplikasi</h3></div>
                         <p className="text-sm text-muted mb-md">Ubah logo dan pengaturan global aplikasi (khusus Admin).</p>
 
-                        <div className="form-group" style={{ maxWidth: 400 }}>
-                            <label className="form-label">Logo Aplikasi</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                {settings?.app_logo ? (
-                                    <div style={{ padding: 8, background: 'var(--bg-tertiary)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                                        <img src={settings.app_logo} alt="App Logo" style={{ height: 40, objectFit: 'contain' }} />
+                        <div className="grid grid-2">
+                            <div className="form-group">
+                                <label className="form-label">Logo Aplikasi</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                    {settings?.app_logo ? (
+                                        <div style={{ padding: 8, borderRadius: 8, border: '1px dashed var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <img src={settings.app_logo} alt="App Logo" style={{ height: 40, objectFit: 'contain' }} />
+                                        </div>
+                                    ) : (
+                                        <div style={{ width: 40, height: 40, background: 'var(--gradient-primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                                            CRM
+                                        </div>
+                                    )}
+                                    <div>
+                                        <input
+                                            type="file"
+                                            id="logo-upload"
+                                            accept="image/png, image/jpeg, image/svg+xml"
+                                            onChange={handleLogoUpload}
+                                            style={{ display: 'none' }}
+                                            disabled={uploading}
+                                        />
+                                        <label htmlFor="logo-upload" className="btn btn-secondary" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
+                                            {uploading ? 'Mengunggah...' : 'Pilih File Logo'}
+                                        </label>
+                                        <p className="text-sm text-muted mt-sm" style={{ fontSize: '0.75rem' }}>PNG, JPG, SVG max 2MB.</p>
                                     </div>
-                                ) : (
-                                    <div style={{ width: 40, height: 40, background: 'var(--gradient-primary)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                                        CRM
-                                    </div>
-                                )}
-                                <div>
-                                    <input
-                                        type="file"
-                                        id="logo-upload"
-                                        accept="image/png, image/jpeg, image/svg+xml"
-                                        onChange={handleLogoUpload}
-                                        style={{ display: 'none' }}
-                                        disabled={uploading}
-                                    />
-                                    <label htmlFor="logo-upload" className="btn btn-secondary" style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}>
-                                        {uploading ? 'Mengunggah...' : 'Pilih File Logo'}
-                                    </label>
-                                    <p className="text-sm text-muted mt-sm" style={{ fontSize: '0.75rem' }}>PNG, JPG, SVG max 2MB.</p>
+                                    {settings?.app_logo && (
+                                        <button
+                                            className="btn btn-ghost"
+                                            style={{ color: 'var(--accent-danger)' }}
+                                            onClick={async () => {
+                                                if (confirm('Hapus logo kustom?')) {
+                                                    await fetch('/api/settings', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ key: 'app_logo', value: '' }),
+                                                    });
+                                                    refreshSettings();
+                                                }
+                                            }}
+                                        >
+                                            Hapus
+                                        </button>
+                                    )}
                                 </div>
-                                {settings?.app_logo && (
-                                    <button
-                                        className="btn btn-ghost"
-                                        style={{ color: 'var(--accent-danger)' }}
-                                        onClick={async () => {
-                                            if (confirm('Hapus logo kustom?')) {
-                                                await fetch('/api/settings', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ key: 'app_logo', value: '' }),
-                                                });
-                                                refreshSettings();
-                                            }
-                                        }}
-                                    >
-                                        Hapus
-                                    </button>
-                                )}
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Konfigurasi Email (SMTP)</label>
+                                <p className="text-xs text-muted mb-sm">Gunakan Gmail App Password atau SMTP Provider lainnya.</p>
+                                <div className="grid grid-2" style={{ gap: 8 }}>
+                                    <input className="form-control" placeholder="SMTP Host (e.g. smtp.gmail.com)" value={smtpForm.smtp_host} onChange={e => setSmtpForm({...smtpForm, smtp_host: e.target.value})} />
+                                    <input className="form-control" placeholder="SMTP Port (e.g. 465 or 587)" value={smtpForm.smtp_port} onChange={e => setSmtpForm({...smtpForm, smtp_port: e.target.value})} />
+                                    <input className="form-control" placeholder="SMTP User" value={smtpForm.smtp_user} onChange={e => setSmtpForm({...smtpForm, smtp_user: e.target.value})} />
+                                    <input className="form-control" type="password" placeholder="SMTP Password" value={smtpForm.smtp_pass} onChange={e => setSmtpForm({...smtpForm, smtp_pass: e.target.value})} />
+                                    <input className="form-control" placeholder="From Email (e.g. no-reply@crm.com)" value={smtpForm.smtp_from} onChange={e => setSmtpForm({...smtpForm, smtp_from: e.target.value})} style={{ gridColumn: '1 / -1' }} />
+                                </div>
+                                <button className="btn btn-primary mt-md" onClick={handleSmtpSave} disabled={savingSmtp}>
+                                    {savingSmtp ? 'Menyimpan...' : 'Simpan SMTP'}
+                                </button>
                             </div>
                         </div>
                     </div>

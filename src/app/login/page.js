@@ -70,14 +70,14 @@ export default function LoginPage() {
             <div className="login-container">
                 <div className="login-card">
                     <div className="login-header">
-                        <div className="login-logo">
+                        <div className={`login-logo ${!appLogo ? 'fallback-logo' : ''}`}>
                             {appLogo ? (
                                 <img
                                     src={appLogo}
                                     alt="App Logo"
                                     style={{
-                                        width: 48,
-                                        height: 48,
+                                        width: '100%',
+                                        height: '100%',
                                         objectFit: 'contain',
                                         transition: 'all 0.3s ease'
                                     }}

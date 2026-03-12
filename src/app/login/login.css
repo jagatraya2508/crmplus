@@ -87,12 +87,15 @@
     width: 56px;
     height: 56px;
     border-radius: 14px;
-    background: var(--gradient-primary);
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 16px;
     color: white;
+}
+
+.login-logo.fallback-logo {
+    background: var(--gradient-primary);
     box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
 }
 

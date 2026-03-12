@@ -17,7 +17,7 @@ export async function GET(request) {
         let idx = 1;
 
         if (search) {
-            where.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx} OR p.product_code ILIKE $${idx})`);
+            where.push(`(p.name ILIKE $${idx} OR p.sku ILIKE $${idx} OR p.product_code ILIKE $${idx} OR p.brand ILIKE $${idx} OR p.model ILIKE $${idx})`);
             params.push(`%${search}%`);
             idx++;
         }
@@ -40,7 +40,7 @@ export async function POST(request) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        const { name, sku, description, price, unit, category, stock } = body;
+        const { name, sku, description, price, unit, category, category_2, category_3, sub_category, brand, model, stock } = body;
         if (!name) return NextResponse.json({ error: 'Nama produk wajib diisi' }, { status: 400 });
 
         // Auto-generate product_code (e.g., PR001)
@@ -58,8 +58,8 @@ export async function POST(request) {
         }
 
         const result = await query(
-            'INSERT INTO products (product_code, name, sku, description, price, unit, category, stock) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-            [nextCode, name, sku || null, description || null, price || 0, unit || 'pcs', category || null, stock || 0]
+            'INSERT INTO products (product_code, name, sku, description, price, unit, category, category_2, category_3, sub_category, brand, model, stock) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
+            [nextCode, name, sku || null, description || null, price || 0, unit || 'pcs', category || null, category_2 || null, category_3 || null, sub_category || null, brand || null, model || null, stock || 0]
         );
         return NextResponse.json({ product: result.rows[0] }, { status: 201 });
     } catch (error) {

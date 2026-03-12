@@ -1,20 +1,23 @@
 import { NextResponse } from 'next/server';
-import { getOne, query } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
 export async function PUT(request, { params }) {
     try {
         const user = await getCurrentUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        
         const { id } = await params;
         const body = await request.json();
-        const { name, sku, description, price, unit, category, category_2, category_3, sub_category, brand, model, stock, is_active } = body;
+        const { name, type } = body;
+
+        if (!name || !type) return NextResponse.json({ error: 'Nama dan Tipe Kategori wajib diisi' }, { status: 400 });
 
         const result = await query(
-            `UPDATE products SET name=$1, sku=$2, description=$3, price=$4, unit=$5, category=$6, category_2=$7, category_3=$8, sub_category=$9, brand=$10, model=$11, stock=$12, is_active=$13, updated_at=NOW() WHERE id=$14 RETURNING *`,
-            [name, sku || null, description || null, price || 0, unit || 'pcs', category || null, category_2 || null, category_3 || null, sub_category || null, brand || null, model || null, stock || 0, is_active !== false, id]
+            'UPDATE product_categories SET name = $1, type = $2 WHERE id = $3 RETURNING *',
+            [name, type, id]
         );
-        return NextResponse.json({ product: result.rows[0] });
+        return NextResponse.json({ category: result.rows[0] });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -24,8 +27,10 @@ export async function DELETE(request, { params }) {
     try {
         const user = await getCurrentUser();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        
         const { id } = await params;
-        await query('UPDATE products SET is_active = false WHERE id = $1', [id]);
+        // Soft delete
+        await query('UPDATE product_categories SET is_active = false WHERE id = $1', [id]);
         return NextResponse.json({ success: true });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

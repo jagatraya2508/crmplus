@@ -20,8 +20,14 @@ export async function GET(request) {
         let params = [];
         let idx = 1;
 
+        if (user.role === 'sales') {
+            where.push(`c.assigned_to = $${idx}`);
+            params.push(user.id);
+            idx++;
+        }
+
         if (search) {
-            where.push(`(c.name ILIKE $${idx} OR c.company ILIKE $${idx} OR c.email ILIKE $${idx} OR c.phone ILIKE $${idx})`);
+            where.push(`(c.name ILIKE $${idx} OR c.company ILIKE $${idx} OR c.email ILIKE $${idx} OR c.phone ILIKE $${idx} OR c.customer_code ILIKE $${idx})`);
             params.push(`%${search}%`);
             idx++;
         }
@@ -63,17 +69,29 @@ export async function POST(request) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        const { name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to } = body;
+        const { name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to, customer_code, lead_id } = body;
 
         if (!name) return NextResponse.json({ error: 'Nama pelanggan wajib diisi' }, { status: 400 });
 
         const result = await query(`
-      INSERT INTO customers (name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      INSERT INTO customers (name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to, created_by, lead_id, customer_code)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
-    `, [name, company || null, email || null, phone || null, address || null, city || null, province || null, postal_code || null, latitude || null, longitude || null, category || 'prospect', notes || null, assigned_to || user.id, user.id]);
+    `, [name, company || null, email || null, phone || null, address || null, city || null, province || null, postal_code || null, latitude || null, longitude || null, category || 'prospect', notes || null, assigned_to || user.id, user.id, lead_id || null, customer_code || null]);
 
-        return NextResponse.json({ customer: result.rows[0] }, { status: 201 });
+        let newCustomer = result.rows[0];
+
+        // Jika tidak ada customer_code yang diberikan (bukan dari leads), generate otomatis
+        if (!customer_code) {
+             const generatedCode = `CUST-${String(newCustomer.id).padStart(4, '0')}`;
+             const updateResult = await query(
+                 'UPDATE customers SET customer_code = $1 WHERE id = $2 RETURNING *',
+                 [generatedCode, newCustomer.id]
+             );
+             newCustomer = updateResult.rows[0];
+        }
+
+        return NextResponse.json({ customer: newCustomer }, { status: 201 });
     } catch (error) {
         console.error('Customers POST error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

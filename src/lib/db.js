@@ -64,9 +64,14 @@ export async function initDatabase() {
       notes TEXT,
       assigned_to INTEGER REFERENCES users(id),
       created_by INTEGER REFERENCES users(id),
+      customer_code VARCHAR(100) UNIQUE,
+      lead_id INTEGER,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_code VARCHAR(100) UNIQUE;
+    ALTER TABLE customers ADD COLUMN IF NOT EXISTS lead_id INTEGER;
 
     CREATE TABLE IF NOT EXISTS contacts (
       id SERIAL PRIMARY KEY,
@@ -88,6 +93,11 @@ export async function initDatabase() {
       price DECIMAL(15,2) DEFAULT 0,
       unit VARCHAR(50) DEFAULT 'pcs',
       category VARCHAR(100),
+      category_2 VARCHAR(100),
+      category_3 VARCHAR(100),
+      sub_category VARCHAR(100),
+      brand VARCHAR(100),
+      model VARCHAR(100),
       stock INTEGER DEFAULT 0,
       is_active BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT NOW(),
@@ -95,6 +105,19 @@ export async function initDatabase() {
     );
 
     ALTER TABLE products ADD COLUMN IF NOT EXISTS product_code VARCHAR(100) UNIQUE;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(100);
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(100);
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS model VARCHAR(100);
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS category_2 VARCHAR(100);
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS category_3 VARCHAR(100);
+
+    CREATE TABLE IF NOT EXISTS product_categories (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
 
     CREATE TABLE IF NOT EXISTS pipeline_stages (
       id SERIAL PRIMARY KEY,
@@ -236,10 +259,9 @@ export async function initDatabase() {
     INSERT INTO pipeline_stages (name, color, sort_order) 
     SELECT * FROM (VALUES 
       ('Prospek Baru', '#6366f1', 1),
-      ('Kualifikasi', '#f59e0b', 2),
-      ('Proposal', '#3b82f6', 3),
-      ('Negosiasi', '#f97316', 4),
-      ('Closing', '#10b981', 5)
+      ('Proposal', '#3b82f6', 2),
+      ('Negosiasi', '#f97316', 3),
+      ('Closing', '#10b981', 4)
     ) AS v(name, color, sort_order)
     WHERE NOT EXISTS (SELECT 1 FROM pipeline_stages LIMIT 1);
   `);

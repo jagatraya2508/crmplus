@@ -11,13 +11,13 @@ export default function LeadsPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', source: 'website', score: 0, status: 'new', notes: '' });
+    const [form, setForm] = useState({ lead_code: '', name: '', email: '', phone: '', company: '', source: 'website', score: 0, status: 'new', notes: '' });
 
     useEffect(() => { fetchLeads(); }, []);
     async function fetchLeads() { setLoading(true); const res = await fetch('/api/leads'); const data = await res.json(); setLeads(data.leads || []); setLoading(false); }
 
-    function openAdd() { setEditing(null); setForm({ name: '', email: '', phone: '', company: '', source: 'website', score: 0, status: 'new', notes: '' }); setShowModal(true); }
-    function openEdit(l) { setEditing(l); setForm({ name: l.name, email: l.email || '', phone: l.phone || '', company: l.company || '', source: l.source || 'other', score: l.score || 0, status: l.status, notes: l.notes || '' }); setShowModal(true); }
+    function openAdd() { setEditing(null); setForm({ lead_code: '', name: '', email: '', phone: '', company: '', source: 'website', score: 0, status: 'new', notes: '' }); setShowModal(true); }
+    function openEdit(l) { setEditing(l); setForm({ lead_code: l.lead_code || '', name: l.name, email: l.email || '', phone: l.phone || '', company: l.company || '', source: l.source || 'other', score: l.score || 0, status: l.status, notes: l.notes || '' }); setShowModal(true); }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -47,9 +47,10 @@ export default function LeadsPage() {
             ) : (
                 <div className="table-container">
                     <table className="table">
-                        <thead><tr><th>Nama</th><th>Perusahaan</th><th>Sumber</th><th>Score</th><th>Status</th><th>Aksi</th></tr></thead>
+                        <thead><tr><th>ID Lead</th><th>Nama</th><th>Perusahaan</th><th>Sumber</th><th>Score</th><th>Status</th><th>Aksi</th></tr></thead>
                         <tbody>{leads.map(l => (
                             <tr key={l.id}>
+                                <td><span className="badge badge-secondary">{l.lead_code || '-'}</span></td>
                                 <td><strong>{l.name}</strong><br /><span className="text-sm text-muted">{l.email || l.phone || '-'}</span></td>
                                 <td>{l.company || '-'}</td>
                                 <td>{sourceLabels[l.source] || l.source}</td>
@@ -68,6 +69,16 @@ export default function LeadsPage() {
                         <div className="modal-header"><h3>{editing ? 'Edit' : 'Tambah'} Lead</h3><button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}><X size={18} /></button></div>
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">ID Lead</label>
+                                    <input 
+                                        className="form-control" 
+                                        value={form.lead_code || 'Otomatis (Sistem)'} 
+                                        readOnly 
+                                        disabled 
+                                        style={{ backgroundColor: 'var(--bg-tertiary)' }} 
+                                    />
+                                </div>
                                 <div className="form-group"><label className="form-label">Nama *</label><input className="form-control" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
                                 <div className="form-group"><label className="form-label">Email</label><input className="form-control" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
                                 <div className="form-group"><label className="form-label">Telepon</label><input className="form-control" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>

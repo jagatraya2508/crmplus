@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Users, Building, Mail, Phone, MapPin, Edit, Trash2, X, ChevronLeft, ChevronRight, Crosshair, Loader } from 'lucide-react';
+import { Plus, Search, Filter, Users, Building, Mail, Phone, MapPin, Edit, Trash2, X, ChevronLeft, ChevronRight, Crosshair, Loader, User } from 'lucide-react';
+import { useAuth } from '@/components/AppShell';
 import './customers.css';
 
 const categories = [
@@ -26,7 +27,10 @@ const categoryLabel = {
 };
 
 export default function CustomersPage() {
+    const { user: currentUser } = useAuth();
     const [customers, setCustomers] = useState([]);
+    const [salesUsers, setSalesUsers] = useState([]);
+    const [leads, setLeads] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
@@ -37,8 +41,9 @@ export default function CustomersPage() {
     const [editing, setEditing] = useState(null);
     const [gettingLocation, setGettingLocation] = useState(false);
     const [form, setForm] = useState({
-        name: '', company: '', email: '', phone: '', address: '', city: '', province: '', postal_code: '', category: 'prospect', notes: '', latitude: '', longitude: '',
+        name: '', company: '', email: '', phone: '', address: '', city: '', province: '', postal_code: '', category: 'prospect', notes: '', latitude: '', longitude: '', assigned_to: '', lead_id: '', customer_code: ''
     });
+    const [sourceType, setSourceType] = useState('new'); // 'new' or 'lead'
 
     function generateLocation() {
         if (!navigator.geolocation) {
@@ -67,7 +72,32 @@ export default function CustomersPage() {
 
     useEffect(() => {
         fetchCustomers();
-    }, [page, search, category]);
+        if (currentUser?.role === 'admin' || currentUser?.role === 'manager') {
+            fetchSalesUsers();
+        }
+    }, [page, search, category, currentUser]);
+
+    async function fetchSalesUsers() {
+        try {
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const data = await res.json();
+                setSalesUsers(data.users || []);
+            }
+        } catch (e) { console.error('Failed to fetch users', e); }
+    }
+
+    async function fetchLeads() {
+        try {
+            const res = await fetch('/api/leads');
+            if (res.ok) {
+                const data = await res.json();
+                // Hanya ambil leads yang belum jadi customer atau belum lost, misalnya 'qualified' atau 'new'
+                // Karena data struktur leads kita tidak punya field 'is_customer', kita akan memfilter di UI untuk saat ini
+                setLeads((data.leads || []).filter(l => l.status !== 'converted' && l.status !== 'lost'));
+            }
+        } catch (e) { console.error('Failed to fetch leads', e); }
+    }
 
     async function fetchCustomers() {
         setLoading(true);
@@ -86,16 +116,24 @@ export default function CustomersPage() {
 
     function openAdd() {
         setEditing(null);
-        setForm({ name: '', company: '', email: '', phone: '', address: '', city: '', province: '', postal_code: '', category: 'prospect', notes: '', latitude: '', longitude: '' });
+        setSourceType('new');
+        fetchLeads(); // Fetch leads when opening add modal
+        setForm({ 
+            name: '', company: '', email: '', phone: '', address: '', city: '', province: '', postal_code: '', category: 'prospect', notes: '', latitude: '', longitude: '', 
+            assigned_to: currentUser?.id || '', lead_id: '', customer_code: ''
+        });
         setShowModal(true);
     }
 
     function openEdit(c) {
         setEditing(c);
+        setSourceType('new'); // On edit, we don't show the lead pull UI
         setForm({
             name: c.name || '', company: c.company || '', email: c.email || '', phone: c.phone || '',
             address: c.address || '', city: c.city || '', province: c.province || '', postal_code: c.postal_code || '',
             category: c.category || 'prospect', notes: c.notes || '', latitude: c.latitude || '', longitude: c.longitude || '',
+            assigned_to: c.assigned_to || currentUser?.id || '',
+            lead_id: c.lead_id || '', customer_code: c.customer_code || ''
         });
         setShowModal(true);
     }
@@ -168,6 +206,7 @@ export default function CustomersPage() {
                         <table className="table">
                             <thead>
                                 <tr>
+                                    <th>CUST ID</th>
                                     <th>Nama</th>
                                     <th>Perusahaan</th>
                                     <th>Kontak</th>
@@ -179,6 +218,9 @@ export default function CustomersPage() {
                             <tbody>
                                 {customers.map(c => (
                                     <tr key={c.id}>
+                                        <td>
+                                            <span className="badge badge-secondary">{c.customer_code || '-'}</span>
+                                        </td>
                                         <td>
                                             <div className="customer-name">
                                                 <div className="customer-avatar">{c.name?.charAt(0)?.toUpperCase()}</div>
@@ -228,7 +270,80 @@ export default function CustomersPage() {
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body">
+                                {!editing && (
+                                    <div className="form-group" style={{ marginBottom: 20 }}>
+                                        <label className="form-label" style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Sumber Data Pelanggan</label>
+                                        <div style={{ display: 'flex', gap: 16 }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                                <input
+                                                    type="radio"
+                                                    name="sourceType"
+                                                    checked={sourceType === 'new'}
+                                                    onChange={() => {
+                                                        setSourceType('new');
+                                                        setForm(prev => ({ ...prev, lead_id: '', customer_code: '', name: '', company: '', email: '', phone: '' }));
+                                                    }}
+                                                />
+                                                Pelanggan Baru
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                                <input
+                                                    type="radio"
+                                                    name="sourceType"
+                                                    checked={sourceType === 'lead'}
+                                                    onChange={() => setSourceType('lead')}
+                                                />
+                                                Tarik dari Leads
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {sourceType === 'lead' && !editing && (
+                                    <div className="form-group" style={{ marginBottom: 20, padding: 16, backgroundColor: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                                        <label className="form-label">Pilih Lead</label>
+                                        <select 
+                                            className="form-control" 
+                                            value={form.lead_id} 
+                                            onChange={e => {
+                                                const selectedLead = leads.find(l => l.id.toString() === e.target.value);
+                                                if (selectedLead) {
+                                                    setForm(prev => ({
+                                                        ...prev,
+                                                        lead_id: selectedLead.id,
+                                                        customer_code: selectedLead.lead_code,
+                                                        name: selectedLead.name,
+                                                        company: selectedLead.company || '',
+                                                        email: selectedLead.email || '',
+                                                        phone: selectedLead.phone || ''
+                                                    }));
+                                                } else {
+                                                    setForm(prev => ({ ...prev, lead_id: '', customer_code: '', name: '', company: '', email: '', phone: '' }));
+                                                }
+                                            }}
+                                        >
+                                            <option value="">- Cari / Pilih Lead -</option>
+                                            {leads.map(l => (
+                                                <option key={l.id} value={l.id}>{l.lead_code} - {l.name} {l.company ? `(${l.company})` : ''}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-sm text-muted" style={{ marginTop: 8 }}>
+                                            Memilih lead akan otomatis mengisi ID Pelanggan, Nama, Perusahaan, Email, dan Telepon.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="form-grid">
+                                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                        <label className="form-label">ID Pelanggan</label>
+                                        <input 
+                                            className="form-control" 
+                                            value={form.customer_code || 'Otomatis (Sistem)'} 
+                                            readOnly 
+                                            disabled 
+                                            style={{ backgroundColor: 'var(--bg-tertiary)', fontWeight: 'bold' }} 
+                                        />
+                                    </div>
                                     <div className="form-group">
                                         <label className="form-label">Nama *</label>
                                         <input className="form-control" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
@@ -269,6 +384,29 @@ export default function CustomersPage() {
                                             <option value="inactive">Tidak Aktif</option>
                                             <option value="vip">VIP</option>
                                         </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Sales Person</label>
+                                        {(currentUser?.role === 'admin' || currentUser?.role === 'manager') ? (
+                                            <select 
+                                                className="form-control" 
+                                                value={form.assigned_to} 
+                                                onChange={e => setForm({ ...form, assigned_to: e.target.value })}
+                                            >
+                                                <option value="">- Pilih Sales -</option>
+                                                {salesUsers.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input 
+                                                className="form-control" 
+                                                value={currentUser?.name || ''} 
+                                                readOnly 
+                                                disabled
+                                                style={{ backgroundColor: 'var(--bg-tertiary)', cursor: 'not-allowed' }}
+                                            />
+                                        )}
                                     </div>
                                     <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

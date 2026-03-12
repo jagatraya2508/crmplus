@@ -398,12 +398,14 @@ textarea.form-control {
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
 }
 
 .table td {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .table tbody tr {
@@ -964,6 +966,18 @@ textarea.form-control {
     margin: 10px;
   }
 
+  .modal-header {
+    padding: 16px 20px;
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+  }
+
   h1 {
     font-size: 1.5rem;
   }
@@ -977,6 +991,13 @@ textarea.form-control {
   margin-bottom: 32px;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 .page-title {

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query, getOne } from './db';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'crm-plus-secret-key-2024';
 const TOKEN_EXPIRY = '7d';
@@ -85,14 +86,29 @@ export async function loginUser(email, password) {
 }
 
 export function requireRole(...roles) {
-    return async function (request) {
-        const user = await getCurrentUser();
-        if (!user) {
-            return { error: 'Unauthorized', status: 401 };
-        }
-        if (roles.length > 0 && !roles.includes(user.role)) {
-            return { error: 'Forbidden', status: 403 };
-        }
-        return { user };
+    return function(handler) {
+        return async function (request, ...args) {
+            try {
+                const user = await getCurrentUser();
+                if (!user) {
+                    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+                }
+                if (roles.length > 0 && !roles.includes(user.role)) {
+                    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+                }
+                
+                // NextRequest might be frozen, use defineProperty or just catch
+                try {
+                    Object.defineProperty(request, 'user', { value: user, writable: true });
+                } catch (e) {
+                    // Ignore if we absolutely cannot set it
+                }
+                
+                return await handler(request, ...args);
+            } catch (err) {
+                console.error("requireRole middleware error:", err);
+                return NextResponse.json({ error: "Internal Server Error in Middleware: " + err.message }, { status: 500 });
+            }
+        };
     };
 }
