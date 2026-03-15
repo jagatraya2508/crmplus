@@ -81,14 +81,12 @@ export const GET = requireRole('admin', 'manager', 'sales')(async (request) => {
         // Get Summary counts
         const statsQuery = `
             SELECT 
-                COUNT(*) as total,
-                SUM(CASE WHEN type = 'call' THEN 1 ELSE 0 END) as count_call,
-                SUM(CASE WHEN type = 'meeting' THEN 1 ELSE 0 END) as count_meeting,
-                SUM(CASE WHEN type = 'email' THEN 1 ELSE 0 END) as count_email,
-                SUM(CASE WHEN type = 'visit' THEN 1 ELSE 0 END) as count_visit,
-                SUM(CASE WHEN type = 'task' THEN 1 ELSE 0 END) as count_task
-            FROM activities a
-            WHERE 1=1 ${authFilter}
+                (SELECT COUNT(*) FROM activities WHERE 1=1 ${authFilter.replace(/a\./g, '')}) as total,
+                (SELECT COUNT(*) FROM activities WHERE type = 'call' ${authFilter.replace(/a\./g, '')}) as count_call,
+                (SELECT COUNT(*) FROM activities WHERE type = 'meeting' ${authFilter.replace(/a\./g, '')}) as count_meeting,
+                (SELECT COUNT(*) FROM activities WHERE type = 'email' ${authFilter.replace(/a\./g, '')}) as count_email,
+                (SELECT COUNT(*) FROM visits WHERE 1=1 ${authFilter.replace(/a\./g, '')}) as count_visit,
+                (SELECT COUNT(*) FROM activities WHERE type = 'task' ${authFilter.replace(/a\./g, '')}) as count_task
         `;
         const stats = await getMany(statsQuery, authParams);
         

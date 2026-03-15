@@ -1,7 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Users, Building, Mail, Phone, MapPin, Edit, Trash2, X, ChevronLeft, ChevronRight, Crosshair, Loader, User } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Filter, Users, Building, Mail, Phone, MapPin, Edit, Trash2, X, ChevronLeft, ChevronRight, Crosshair, Loader, User, ChevronUp, ChevronDown, Printer, FileText, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/components/AppShell';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './customers.css';
 
 const categories = [
@@ -40,10 +43,12 @@ export default function CustomersPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [gettingLocation, setGettingLocation] = useState(false);
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [form, setForm] = useState({
         name: '', company: '', email: '', phone: '', address: '', city: '', province: '', postal_code: '', category: 'prospect', notes: '', latitude: '', longitude: '', assigned_to: '', lead_id: '', customer_code: ''
     });
     const [sourceType, setSourceType] = useState('new'); // 'new' or 'lead'
+    const [isExporting, setIsExporting] = useState(false);
 
     function generateLocation() {
         if (!navigator.geolocation) {
@@ -169,6 +174,234 @@ export default function CustomersPage() {
         searchTimeout = setTimeout(() => { setSearch(val); setPage(1); }, 300);
     }
 
+    const sortedCustomers = useMemo(() => {
+        let sortableItems = [...customers];
+        if (sortConfig !== null && sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+                
+                if (sortConfig.key === 'kontak') {
+                    // Sort by email, if no email, fall back to phone or empty string
+                    aValue = (a.email || a.phone || '').toLowerCase();
+                    bValue = (b.email || b.phone || '').toLowerCase();
+                } else if (sortConfig.key === 'category') {
+                    aValue = (categoryLabel[a.category] || a.category || '').toLowerCase();
+                    bValue = (categoryLabel[b.category] || b.category || '').toLowerCase();
+                } else {
+                    aValue = (aValue || '').toLowerCase();
+                    bValue = (bValue || '').toLowerCase();
+                }
+
+                if (aValue === null || aValue === undefined) aValue = '';
+                if (bValue === null || bValue === undefined) bValue = '';
+                
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [customers, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (
+            sortConfig &&
+            sortConfig.key === key &&
+            sortConfig.direction === 'ascending'
+        ) {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const renderSortIcon = (columnKey) => {
+        if (!sortConfig || sortConfig.key !== columnKey) {
+            return <span style={{ width: 14, display: 'inline-block', marginLeft: '4px' }}></span>;
+        }
+        return sortConfig.direction === 'ascending' 
+            ? <ChevronUp size={14} style={{ marginLeft: '4px', verticalAlign: 'middle', display: 'inline-block' }} /> 
+            : <ChevronDown size={14} style={{ marginLeft: '4px', verticalAlign: 'middle', display: 'inline-block' }} />;
+    };
+
+    async function fetchExportData() {
+        try {
+            const params = new URLSearchParams({ page: 1, limit: 100000 });
+            if (search) params.set('search', search);
+            if (category) params.set('category', category);
+            const res = await fetch(`/api/customers?${params}`);
+            const data = await res.json();
+            return data.customers || [];
+        } catch (e) {
+            console.error('Failed to fetch data for export', e);
+            return [];
+        }
+    }
+
+    async function handleExportExcel() {
+        setIsExporting(true);
+        try {
+            const data = await fetchExportData();
+            if (data.length === 0) {
+                alert('Tidak ada data untuk diekspor');
+                return;
+            }
+            
+            const exportData = data.map((c, index) => ({
+                'No': index + 1,
+                'ID Pelanggan': c.customer_code || '-',
+                'Nama': c.name || '-',
+                'Perusahaan': c.company || '-',
+                'Email': c.email || '-',
+                'Telepon': c.phone || '-',
+                'Alamat': c.address || '-',
+                'Kota': c.city || '-',
+                'Provinsi': c.province || '-',
+                'Kode Pos': c.postal_code || '-',
+                'Kategori': categoryLabel[c.category] || c.category || '-',
+                'Catatan': c.notes || '-'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Pelanggan');
+            XLSX.writeFile(workbook, 'Data_Pelanggan.xlsx');
+        } catch (e) {
+            console.error(e);
+            alert('Gagal mengekspor Excel');
+        } finally {
+            setIsExporting(false);
+        }
+    }
+
+    async function handleExportPDF() {
+        setIsExporting(true);
+        try {
+            const data = await fetchExportData();
+            if (data.length === 0) {
+                alert('Tidak ada data untuk diekspor');
+                return;
+            }
+            
+            const doc = new jsPDF('landscape');
+            doc.text('Data Pelanggan', 14, 15);
+            doc.setFontSize(10);
+            const date = new Date().toLocaleDateString('id-ID');
+            doc.text(`Tanggal: ${date} | Filter: ${search || 'Semua'} | Kategori: ${categoryLabel[category] || 'Semua'}`, 14, 22);
+
+            const tableData = data.map((c, index) => [
+                index + 1,
+                c.customer_code || '-',
+                c.name || '-',
+                c.company || '-',
+                `${c.email || ''}\n${c.phone || ''}`.trim(),
+                c.city || '-',
+                categoryLabel[c.category] || c.category || '-'
+            ]);
+
+            autoTable(doc, {
+                head: [['No', 'ID Pelanggan', 'Nama', 'Perusahaan', 'Kontak', 'Kota', 'Kategori']],
+                body: tableData,
+                startY: 25,
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [65, 84, 241] },
+            });
+
+            doc.save('Data_Pelanggan.pdf');
+        } catch (e) {
+            console.error(e);
+            alert('Gagal mengekspor PDF');
+        } finally {
+            setIsExporting(false);
+        }
+    }
+
+    async function handlePrint() {
+        setIsExporting(true);
+        try {
+            const data = await fetchExportData();
+            if (data.length === 0) {
+                alert('Tidak ada data untuk dicetak');
+                return;
+            }
+            
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('Pop-up terblokir. Izinkan pop-up untuk mencetak.');
+                return;
+            }
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Cetak Data Pelanggan</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
+                        h2 { text-align: center; margin-bottom: 5px; }
+                        p { text-align: center; margin-top: 0; color: #555; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f4f6f8; font-weight: bold; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h2>Data Pelanggan</h2>
+                    <p>Tanggal: ${new Date().toLocaleDateString('id-ID')} | Filter: ${search || 'Semua'} | Kategori: ${categoryLabel[category] || 'Semua'}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>ID Pelanggan</th>
+                                <th>Nama</th>
+                                <th>Perusahaan</th>
+                                <th>Kontak</th>
+                                <th>Kota</th>
+                                <th>Kategori</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map((c, index) => {
+                                const emailHtml = c.email ? '<div>' + c.email + '</div>' : '';
+                                const phoneHtml = c.phone ? '<div>' + c.phone + '</div>' : '';
+                                const categoryText = categoryLabel[c.category] || c.category || '-';
+                                return '<tr>' +
+                                    '<td>' + (index + 1) + '</td>' +
+                                    '<td>' + (c.customer_code || '-') + '</td>' +
+                                    '<td>' + (c.name || '-') + '</td>' +
+                                    '<td>' + (c.company || '-') + '</td>' +
+                                    '<td>' + emailHtml + phoneHtml + '</td>' +
+                                    '<td>' + (c.city || '-') + '</td>' +
+                                    '<td>' + categoryText + '</td>' +
+                                    '</tr>';
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.onload = () => {
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                }, 500);
+            };
+        } catch (e) {
+            console.error(e);
+            alert('Gagal menyiapkan data cetak');
+        } finally {
+            setIsExporting(false);
+        }
+    }
+
     return (
         <div>
             <div className="page-header">
@@ -176,9 +409,22 @@ export default function CustomersPage() {
                     <h1 className="page-title">Pelanggan</h1>
                     <p className="page-subtitle">{total} pelanggan terdaftar</p>
                 </div>
-                <button className="btn btn-primary" onClick={openAdd}>
-                    <Plus size={18} /> Tambah Pelanggan
-                </button>
+                <div className="header-actions">
+                    <div className="export-dropdown">
+                        <button className="btn btn-secondary" title="Export" disabled={isExporting}>
+                            {isExporting ? <Loader size={16} className="spin" /> : <Printer size={16} />} 
+                            <span className="hide-mobile">Export</span> <ChevronDown size={14} />
+                        </button>
+                        <div className="dropdown-menu">
+                            <button className="dropdown-item" onClick={handlePrint}><Printer size={16} /> Cetak (Print)</button>
+                            <button className="dropdown-item" onClick={handleExportPDF}><FileText size={16} /> Download PDF</button>
+                            <button className="dropdown-item" onClick={handleExportExcel}><FileSpreadsheet size={16} /> Download Excel</button>
+                        </div>
+                    </div>
+                    <button className="btn btn-primary" onClick={openAdd}>
+                        <Plus size={18} /> Tambah Pelanggan
+                    </button>
+                </div>
             </div>
 
             <div className="toolbar">
@@ -206,17 +452,29 @@ export default function CustomersPage() {
                         <table className="table">
                             <thead>
                                 <tr>
-                                    <th>CUST ID</th>
-                                    <th>Nama</th>
-                                    <th>Perusahaan</th>
-                                    <th>Kontak</th>
-                                    <th>Kota</th>
-                                    <th>Kategori</th>
+                                    <th onClick={() => requestSort('customer_code')} style={{cursor: 'pointer'}}>
+                                        <div style={{display: 'flex', alignItems: 'center'}}>CUST ID {renderSortIcon('customer_code')}</div>
+                                    </th>
+                                    <th onClick={() => requestSort('name')} style={{cursor: 'pointer'}}>
+                                        <div style={{display: 'flex', alignItems: 'center'}}>Nama {renderSortIcon('name')}</div>
+                                    </th>
+                                    <th onClick={() => requestSort('company')} style={{cursor: 'pointer'}}>
+                                        <div style={{display: 'flex', alignItems: 'center'}}>Perusahaan {renderSortIcon('company')}</div>
+                                    </th>
+                                    <th onClick={() => requestSort('kontak')} style={{cursor: 'pointer'}}>
+                                        <div style={{display: 'flex', alignItems: 'center'}}>Kontak {renderSortIcon('kontak')}</div>
+                                    </th>
+                                    <th onClick={() => requestSort('city')} style={{cursor: 'pointer'}}>
+                                        <div style={{display: 'flex', alignItems: 'center'}}>Kota {renderSortIcon('city')}</div>
+                                    </th>
+                                    <th onClick={() => requestSort('category')} style={{cursor: 'pointer'}}>
+                                        <div style={{display: 'flex', alignItems: 'center'}}>Kategori {renderSortIcon('category')}</div>
+                                    </th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {customers.map(c => (
+                                {sortedCustomers.map(c => (
                                     <tr key={c.id}>
                                         <td>
                                             <span className="badge badge-secondary">{c.customer_code || '-'}</span>

@@ -38,8 +38,72 @@
     gap: 0 20px;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.export-dropdown > .btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.export-dropdown .dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    min-width: 180px;
+    z-index: 10;
+    padding: 6px 0;
+}
+
+.export-dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 0.875rem;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+    background: var(--bg-secondary);
+}
+
 @media (max-width: 600px) {
     .form-grid {
         grid-template-columns: 1fr;
+    }
+    .hide-mobile {
+        display: none;
+    }
+    /* override global page-header for mobile if needed, or simply make it adapt */
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 12px;
     }
 }

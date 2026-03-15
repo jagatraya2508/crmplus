@@ -11,7 +11,10 @@ export async function GET(request) {
 
         const { searchParams } = new URL(request.url);
         const date = searchParams.get('date') || '';
+        const dateFrom = searchParams.get('date_from') || '';
+        const dateTo = searchParams.get('date_to') || '';
         const userId = searchParams.get('user_id') || '';
+        const customerId = searchParams.get('customer_id') || '';
         const status = searchParams.get('status') || '';
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '20');
@@ -35,6 +38,24 @@ export async function GET(request) {
         if (date) {
             where.push(`v.checkin_time::date = $${idx}`);
             params.push(date);
+            idx++;
+        }
+
+        if (dateFrom) {
+            where.push(`v.checkin_time::date >= $${idx}`);
+            params.push(dateFrom);
+            idx++;
+        }
+
+        if (dateTo) {
+            where.push(`v.checkin_time::date <= $${idx}`);
+            params.push(dateTo);
+            idx++;
+        }
+
+        if (customerId) {
+            where.push(`v.customer_id = $${idx}`);
+            params.push(parseInt(customerId));
             idx++;
         }
 

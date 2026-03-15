@@ -5,7 +5,7 @@ import { useAuth } from '@/components/AppShell';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import './visits.css';
 
 export default function VisitsPage() {
@@ -15,8 +15,10 @@ export default function VisitsPage() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [dateFilter, setDateFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [customerFilter, setCustomerFilter] = useState('');
     const [showEditModal, setShowEditModal] = useState(false);
     const [editData, setEditData] = useState(null);
     const [customers, setCustomers] = useState([]);
@@ -33,7 +35,8 @@ export default function VisitsPage() {
 
     const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager');
 
-    useEffect(() => { fetchVisits(); }, [page, dateFilter, statusFilter]);
+    useEffect(() => { fetchVisits(); }, [page, dateFrom, dateTo, statusFilter, customerFilter]);
+    useEffect(() => { fetchCustomers(); }, []);
 
     async function fetchCustomers() {
         try {
@@ -115,8 +118,10 @@ export default function VisitsPage() {
         setLoading(true);
         try {
             const params = new URLSearchParams({ page, limit: 20 });
-            if (dateFilter) params.set('date', dateFilter);
+            if (dateFrom) params.set('date_from', dateFrom);
+            if (dateTo) params.set('date_to', dateTo);
             if (statusFilter) params.set('status', statusFilter);
+            if (customerFilter) params.set('customer_id', customerFilter);
             const res = await fetch(`/api/visits?${params}`);
             const data = await res.json();
             setVisits(data.visits || []);
@@ -136,8 +141,10 @@ export default function VisitsPage() {
 
     async function getFullData() {
         const params = new URLSearchParams({ limit: 9999 });
-        if (dateFilter) params.set('date', dateFilter);
+        if (dateFrom) params.set('date_from', dateFrom);
+        if (dateTo) params.set('date_to', dateTo);
         if (statusFilter) params.set('status', statusFilter);
+        if (customerFilter) params.set('customer_id', customerFilter);
         const res = await fetch(`/api/visits?${params}`);
         const data = await res.json();
         return data.visits || [];
@@ -187,7 +194,7 @@ export default function VisitsPage() {
             tableRows.push(rowData);
         });
 
-        doc.autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 28,
@@ -210,11 +217,25 @@ export default function VisitsPage() {
                 </Link>
             </div>
 
-            <div className="toolbar">
-                <div className="search-box" style={{ maxWidth: 200 }}>
-                    <Calendar size={16} className="search-icon" />
-                    <input type="date" value={dateFilter} onChange={e => { setDateFilter(e.target.value); setPage(1); }} />
+            <div className="toolbar" style={{ flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{ fontSize: '13px', color: '#64748b', whiteSpace: 'nowrap' }}>Dari:</label>
+                    <div className="search-box" style={{ maxWidth: 170 }}>
+                        <Calendar size={16} className="search-icon" />
+                        <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
+                    </div>
+                    <label style={{ fontSize: '13px', color: '#64748b', whiteSpace: 'nowrap' }}>s/d:</label>
+                    <div className="search-box" style={{ maxWidth: 170 }}>
+                        <Calendar size={16} className="search-icon" />
+                        <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} />
+                    </div>
                 </div>
+                <select className="form-control" style={{ width: 'auto', minWidth: 180 }} value={customerFilter} onChange={e => { setCustomerFilter(e.target.value); setPage(1); }}>
+                    <option value="">Semua Pelanggan</option>
+                    {customers.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}{c.company ? ` - ${c.company}` : ''}</option>
+                    ))}
+                </select>
                 <select className="form-control" style={{ width: 'auto', minWidth: 160 }} value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
                     <option value="">Semua Status</option>
                     <option value="checked_in">Check-in</option>

@@ -1,10 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
     Calendar, Phone, Users, Mail, MapPin, CheckSquare, 
-    Search, Plus, X, Clock, AlertCircle, Edit, Trash2
+    Search, Plus, X, Clock, AlertCircle, Edit, Trash2,
+    ChevronUp, ChevronDown, LogIn, LogOut, Navigation, User
 } from 'lucide-react';
+import Link from 'next/link';
 import styles from './activities.module.css';
+import '../visits/visits.css';
 
 export default function ActivitiesPage() {
     const [activities, setActivities] = useState([]);
@@ -12,13 +15,17 @@ export default function ActivitiesPage() {
         total: 0, count_call: 0, count_meeting: 0, count_email: 0, count_visit: 0, count_task: 0
     });
     const [filters, setFilters] = useState({
-        query: '', status: 'all'
+        query: '', status: 'all', type: 'all'
     });
     const [loading, setLoading] = useState(true);
     const [customers, setCustomers] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [editId, setEditId] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    const [visitsData, setVisitsData] = useState([]);
+    const [visitsLoading, setVisitsLoading] = useState(false);
+    const [expandedMap, setExpandedMap] = useState(null);
 
     const [form, setForm] = useState({
         type: 'call',
@@ -35,15 +42,20 @@ export default function ActivitiesPage() {
     const [attachment, setAttachment] = useState(null);
 
     useEffect(() => {
-        fetchActivities();
+        if (filters.type === 'visit') {
+            fetchVisitsData();
+        } else {
+            fetchActivities();
+        }
         fetchOptions();
-    }, [filters.status]); // Refresh on status filter change
+    }, [filters.status, filters.type]); // Refresh on status or type filter change
 
     const fetchActivities = async () => {
         try {
             setLoading(true);
             const queryParams = new URLSearchParams(filters);
             if (filters.status === 'all') queryParams.delete('status');
+            if (filters.type === 'all') queryParams.delete('type');
             if (!filters.query) queryParams.delete('query');
 
             const res = await fetch(`/api/activities?${queryParams}`);
@@ -56,6 +68,31 @@ export default function ActivitiesPage() {
             console.error('Failed to fetch activities:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchVisitsData = async () => {
+        try {
+            setVisitsLoading(true);
+            const queryParams = new URLSearchParams({ limit: 100 });
+            if (filters.status !== 'all') {
+                queryParams.set('status', filters.status === 'completed' ? 'checked_out' : 'checked_in');
+            }
+            const res = await fetch(`/api/visits?${queryParams}`);
+            if (res.ok) {
+                const data = await res.json();
+                setVisitsData(data.visits || []);
+                // Update summary silently if needed or fetch activities summary without resetting visitsData
+                const summaryRes = await fetch(`/api/activities`);
+                if (summaryRes.ok) {
+                     const sumData = await summaryRes.json();
+                     setSummary(sumData.summary || {});
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch visits:', error);
+        } finally {
+            setVisitsLoading(false);
         }
     };
 
@@ -218,6 +255,70 @@ export default function ActivitiesPage() {
         }
     };
 
+    const sortedActivities = useMemo(() => {
+        let sortableItems = [...activities];
+        if (sortConfig !== null && sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+                
+                if (sortConfig.key === 'customer') {
+                    aValue = (a.customer_name || '').toLowerCase();
+                    bValue = (b.customer_name || '').toLowerCase();
+                } else if (sortConfig.key === 'assigned') {
+                    aValue = (a.user_name || 'Unassigned').toLowerCase();
+                    bValue = (b.user_name || 'Unassigned').toLowerCase();
+                } else if (sortConfig.key === 'title') {
+                    aValue = (a.title || '').toLowerCase();
+                    bValue = (b.title || '').toLowerCase();
+                } else if (sortConfig.key === 'type' || sortConfig.key === 'status') {
+                    aValue = (aValue || '').toLowerCase();
+                    bValue = (bValue || '').toLowerCase();
+                }
+
+                if (aValue === null || aValue === undefined) aValue = '';
+                if (bValue === null || bValue === undefined) bValue = '';
+                
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [activities, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (
+            sortConfig &&
+            sortConfig.key === key &&
+            sortConfig.direction === 'ascending'
+        ) {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const renderSortIcon = (columnKey) => {
+        if (!sortConfig || sortConfig.key !== columnKey) {
+            return <span style={{ width: 14, display: 'inline-block', marginLeft: '4px' }}></span>;
+        }
+        return sortConfig.direction === 'ascending' 
+            ? <ChevronUp size={14} style={{ marginLeft: '4px', verticalAlign: 'middle' }} /> 
+            : <ChevronDown size={14} style={{ marginLeft: '4px', verticalAlign: 'middle' }} />;
+    };
+
+    const handleTypeFilter = (type) => {
+        setFilters(prev => ({
+            ...prev,
+            type: prev.type === type ? 'all' : type
+        }));
+    };
+
     return (
         <div className={styles.activitiesPage}>
             <div className={styles.header}>
@@ -231,27 +332,27 @@ export default function ActivitiesPage() {
             </div>
 
             <div className={styles.statsRow}>
-                <div className={styles.statCard}>
+                <div className={`${styles.statCard} ${filters.type === 'call' ? styles.activeCard : ''}`} onClick={() => handleTypeFilter('call')}>
                     <Phone className={`${styles.statIcon} ${styles.call}`} />
                     <span className={styles.statLabel}>Call</span>
                     <span className={styles.statValue}>{summary.count_call || 0}</span>
                 </div>
-                <div className={styles.statCard}>
+                <div className={`${styles.statCard} ${filters.type === 'meeting' ? styles.activeCard : ''}`} onClick={() => handleTypeFilter('meeting')}>
                     <Users className={`${styles.statIcon} ${styles.meeting}`} />
                     <span className={styles.statLabel}>Meeting</span>
                     <span className={styles.statValue}>{summary.count_meeting || 0}</span>
                 </div>
-                <div className={styles.statCard}>
+                <div className={`${styles.statCard} ${filters.type === 'email' ? styles.activeCard : ''}`} onClick={() => handleTypeFilter('email')}>
                     <Mail className={`${styles.statIcon} ${styles.email}`} />
                     <span className={styles.statLabel}>Email</span>
                     <span className={styles.statValue}>{summary.count_email || 0}</span>
                 </div>
-                <div className={styles.statCard}>
+                <div className={`${styles.statCard} ${filters.type === 'visit' ? styles.activeCard : ''}`} onClick={() => handleTypeFilter('visit')}>
                     <MapPin className={`${styles.statIcon} ${styles.visit}`} />
                     <span className={styles.statLabel}>Visit</span>
                     <span className={styles.statValue}>{summary.count_visit || 0}</span>
                 </div>
-                <div className={styles.statCard}>
+                <div className={`${styles.statCard} ${filters.type === 'task' ? styles.activeCard : ''}`} onClick={() => handleTypeFilter('task')}>
                     <CheckSquare className={`${styles.statIcon} ${styles.task}`} />
                     <span className={styles.statLabel}>Task</span>
                     <span className={styles.statValue}>{summary.count_task || 0}</span>
@@ -272,42 +373,169 @@ export default function ActivitiesPage() {
                     onChange={(e) => setFilters({...filters, status: e.target.value})}
                 >
                     <option value="all">Semua Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="completed">Completed</option>
-                    <option value="overdue">Overdue</option>
+                    {filters.type === 'visit' ? (
+                        <>
+                            <option value="pending">Check-in</option>
+                            <option value="completed">Completed (Check-out)</option>
+                        </>
+                    ) : (
+                        <>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="overdue">Overdue</option>
+                        </>
+                    )}
                 </select>
                 <button type="submit" className={styles.searchBtn}>
                     <Search size={16} /> Cari
                 </button>
             </form>
 
-            <div className={styles.tableContainer}>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Tipe</th>
-                            <th>Subjek</th>
-                            <th>Tanggal & Waktu</th>
-                            <th>Lead/Opp/Customer</th>
-                            <th>Assigned</th>
-                            <th>Status</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? (
+            {filters.type === 'visit' ? (
+                // Visits Custom List View
+                <div style={{ marginTop: '20px' }}>
+                    {visitsLoading ? (
+                        <div className={styles.emptyState}>Loading visits...</div>
+                    ) : visitsData.length === 0 ? (
+                        <div className={styles.emptyState}>Belum ada data Kunjungan untuk filter ini</div>
+                    ) : (
+                        <div className="visits-list">
+                            {visitsData.map(v => (
+                                <div key={v.id} className={`visit-card ${v.status}`} style={{ margin: 0 }}>
+                                    <div className="visit-status-indicator" />
+                                    <div className="visit-info">
+                                        <div className="visit-header">
+                                            <h4>{v.customer_name || 'Unknown'}</h4>
+                                            <span className={`badge ${v.status === 'checked_in' ? 'badge-success' : 'badge-secondary'}`}>
+                                                {v.status === 'checked_in' ? '📍 Check-in' : '✅ Selesai'}
+                                            </span>
+                                        </div>
+                                        <p className="visit-company">{v.customer_company || v.customer_address || ''}</p>
+                                        <div className="visit-meta">
+                                            <span><User size={13} /> {v.user_name}</span>
+                                            <span><Clock size={13} /> {new Date(v.checkin_time).toLocaleString('id-ID')}</span>
+                                            {v.checkout_time && <span><LogOut size={13} /> {new Date(v.checkout_time).toLocaleString('id-ID')}</span>}
+                                            {v.checkout_time && (
+                                                <span className="visit-duration">
+                                                    {(() => {
+                                                        const diff = new Date(v.checkout_time) - new Date(v.checkin_time);
+                                                        const hours = Math.floor(diff / 3600000);
+                                                        const mins = Math.floor((diff % 3600000) / 60000);
+                                                        return `${hours}j ${mins}m`;
+                                                    })()}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Koordinat Check-in & Check-out */}
+                                        {(v.checkin_lat || v.checkout_lat) && (
+                                            <div className="visit-coords">
+                                                {v.checkin_lat && v.checkin_lng && (
+                                                    <div className="coord-tag checkin">
+                                                        <Navigation size={12} />
+                                                        <span>Check-in: {parseFloat(v.checkin_lat).toFixed(6)}, {parseFloat(v.checkin_lng).toFixed(6)}</span>
+                                                    </div>
+                                                )}
+                                                {v.checkout_lat && v.checkout_lng && (
+                                                    <div className="coord-tag checkout">
+                                                        <Navigation size={12} />
+                                                        <span>Check-out: {parseFloat(v.checkout_lat).toFixed(6)}, {parseFloat(v.checkout_lng).toFixed(6)}</span>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    className="btn btn-ghost btn-sm coord-map-btn"
+                                                    onClick={() => setExpandedMap(expandedMap === v.id ? null : v.id)}
+                                                    title="Lihat Peta"
+                                                >
+                                                    <MapPin size={13} /> {expandedMap === v.id ? 'Tutup Peta' : 'Lihat Peta'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Inline Map */}
+                                        {expandedMap === v.id && v.checkin_lat && v.checkin_lng && (
+                                            <div className="visit-map-preview">
+                                                <iframe
+                                                    width="100%"
+                                                    height="220"
+                                                    style={{ border: 0, display: 'block' }}
+                                                    loading="lazy"
+                                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(v.checkin_lng) - 0.008}%2C${parseFloat(v.checkin_lat) - 0.005}%2C${parseFloat(v.checkout_lng || v.checkin_lng) + 0.008}%2C${parseFloat(v.checkout_lat || v.checkin_lat) + 0.005}&layer=mapnik&marker=${v.checkin_lat}%2C${v.checkin_lng}`}
+                                                />
+                                                <div className="visit-map-links">
+                                                    <a
+                                                        href={`https://www.openstreetmap.org/?mlat=${v.checkin_lat}&mlon=${v.checkin_lng}#map=16/${v.checkin_lat}/${v.checkin_lng}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                    >
+                                                        📍 Check-in di OpenStreetMap
+                                                    </a>
+                                                    {v.checkout_lat && v.checkout_lng && (
+                                                        <a
+                                                            href={`https://www.openstreetmap.org/?mlat=${v.checkout_lat}&mlon=${v.checkout_lng}#map=16/${v.checkout_lat}/${v.checkout_lng}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            🏁 Check-out di OpenStreetMap
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {v.notes && <p className="visit-notes">{v.notes}</p>}
+                                        {v.summary && <p className="visit-notes" style={{ borderLeftColor: 'var(--accent-success)' }}>{v.summary}</p>}
+                                    </div>
+                                    <div className="visit-actions">
+                                        <Link href={`/visits`} className="btn btn-outline btn-sm">
+                                            Lihat di Menu Kunjungan
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className={styles.tableContainer}>
+                    <table>
+                        <thead>
                             <tr>
-                                <td colSpan="7" className={styles.emptyState}>Loading activities...</td>
+                                <th onClick={() => requestSort('type')} style={{cursor: 'pointer'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>Tipe {renderSortIcon('type')}</div>
+                                </th>
+                                <th onClick={() => requestSort('title')} style={{cursor: 'pointer'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>Subjek {renderSortIcon('title')}</div>
+                                </th>
+                                <th onClick={() => requestSort('scheduled_at')} style={{cursor: 'pointer'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>Tanggal & Waktu {renderSortIcon('scheduled_at')}</div>
+                                </th>
+                                <th onClick={() => requestSort('customer')} style={{cursor: 'pointer'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>Lead/Opp/Customer {renderSortIcon('customer')}</div>
+                                </th>
+                                <th onClick={() => requestSort('assigned')} style={{cursor: 'pointer'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>Assigned {renderSortIcon('assigned')}</div>
+                                </th>
+                                <th onClick={() => requestSort('status')} style={{cursor: 'pointer'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>Status {renderSortIcon('status')}</div>
+                                </th>
+                                <th>Aksi</th>
                             </tr>
-                        ) : activities.length === 0 ? (
-                            <tr>
-                                <td colSpan="7" className={styles.emptyState}>Belum ada data Activity</td>
-                            </tr>
-                        ) : (
-                            activities.map(activity => {
-                                const isOverdue = activity.status === 'pending' && new Date(activity.scheduled_at) < new Date();
-                                
-                                return (
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="7" className={styles.emptyState}>Loading activities...</td>
+                                </tr>
+                            ) : activities.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className={styles.emptyState}>Belum ada data Activity</td>
+                                </tr>
+                            ) : (
+                                sortedActivities.map(activity => {
+                                    const isOverdue = activity.status === 'pending' && new Date(activity.scheduled_at) < new Date();
+                                    
+                                    return (
                                     <tr key={activity.id}>
                                         <td>
                                             <div className={styles.typeContainer}>
@@ -387,6 +615,7 @@ export default function ActivitiesPage() {
                     </tbody>
                 </table>
             </div>
+            )}
 
             {/* Create/Edit Modal */}
             {showModal && (
