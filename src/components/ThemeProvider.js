@@ -13,11 +13,11 @@ export const THEMES = [
 ];
 
 export default function ThemeProvider({ children }) {
-    const [theme, setThemeState] = useState('dark');
+    const [theme, setThemeState] = useState('blue-white');
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        const saved = localStorage.getItem('crm-theme') || 'dark';
+        const saved = localStorage.getItem('crm-theme') || 'blue-white';
         setThemeState(saved);
         document.documentElement.setAttribute('data-theme', saved);
         setMounted(true);
