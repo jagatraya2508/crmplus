@@ -73,25 +73,67 @@ export async function POST(request) {
 
         if (!name) return NextResponse.json({ error: 'Nama pelanggan wajib diisi' }, { status: 400 });
 
-        const result = await query(`
-      INSERT INTO customers (name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to, created_by, lead_id, customer_code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      RETURNING *
-    `, [name, company || null, email || null, phone || null, address || null, city || null, province || null, postal_code || null, latitude || null, longitude || null, category || 'prospect', notes || null, assigned_to || user.id, user.id, lead_id || null, customer_code || null]);
+        let finalCustomerCode = (customer_code && customer_code.trim()) ? customer_code.trim() : null;
 
-        let newCustomer = result.rows[0];
+        if (!finalCustomerCode) {
+            // Generate customer_code berdasarkan nomor urut tertinggi di database
+            const maxResult = await getOne(`
+                SELECT MAX(CAST(SUBSTRING(customer_code FROM 'CUST-([0-9]+)') AS INTEGER)) as max_num
+                FROM customers 
+                WHERE customer_code ~ '^CUST-[0-9]+'
+            `);
 
-        // Jika tidak ada customer_code yang diberikan (bukan dari leads), generate otomatis
-        if (!customer_code) {
-             const generatedCode = `CUST-${String(newCustomer.id).padStart(4, '0')}`;
-             const updateResult = await query(
-                 'UPDATE customers SET customer_code = $1 WHERE id = $2 RETURNING *',
-                 [generatedCode, newCustomer.id]
-             );
-             newCustomer = updateResult.rows[0];
+            let nextNum = (maxResult && maxResult.max_num) ? maxResult.max_num + 1 : 1;
+
+            // Cari kode yang belum terpakai (loop untuk menghindari konflik)
+            let generatedCode = null;
+            for (let attempt = 0; attempt < 10; attempt++) {
+                const candidateCode = `CUST-${String(nextNum + attempt).padStart(4, '0')}`;
+                const existing = await getOne('SELECT id FROM customers WHERE customer_code = $1', [candidateCode]);
+                if (!existing) {
+                    generatedCode = candidateCode;
+                    break;
+                }
+            }
+
+            // Fallback: gunakan timestamp jika semua kode konflik
+            if (!generatedCode) {
+                generatedCode = `CUST-${Date.now().toString(36).toUpperCase()}`;
+            }
+
+            const result = await query(`
+                INSERT INTO customers (name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to, created_by, lead_id, customer_code)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                RETURNING *
+            `, [name, company || null, email || null, phone || null, address || null, city || null, province || null, postal_code || null, latitude || null, longitude || null, category || 'prospect', notes || null, assigned_to || user.id, user.id, lead_id || null, generatedCode]);
+
+            // Update lead status to 'converted' jika ada lead_id
+            if (lead_id) {
+                await query('UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2', ['converted', lead_id]);
+            }
+
+            return NextResponse.json({ customer: result.rows[0] }, { status: 201 });
+        } else {
+            // Customer code sudah ada (dari leads) — cek dulu apakah sudah terpakai
+            const existingCode = await getOne('SELECT id FROM customers WHERE customer_code = $1', [finalCustomerCode]);
+            if (existingCode) {
+                // Tambahkan suffix unik agar tidak konflik
+                finalCustomerCode = `${finalCustomerCode}-${Date.now().toString(36)}`;
+            }
+
+            const result = await query(`
+                INSERT INTO customers (name, company, email, phone, address, city, province, postal_code, latitude, longitude, category, notes, assigned_to, created_by, lead_id, customer_code)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                RETURNING *
+            `, [name, company || null, email || null, phone || null, address || null, city || null, province || null, postal_code || null, latitude || null, longitude || null, category || 'prospect', notes || null, assigned_to || user.id, user.id, lead_id || null, finalCustomerCode]);
+
+            // Update lead status to 'converted' jika ada lead_id
+            if (lead_id) {
+                await query('UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2', ['converted', lead_id]);
+            }
+
+            return NextResponse.json({ customer: result.rows[0] }, { status: 201 });
         }
-
-        return NextResponse.json({ customer: newCustomer }, { status: 201 });
     } catch (error) {
         console.error('Customers POST error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

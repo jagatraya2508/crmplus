@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { UserPlus, Plus, Search, X } from 'lucide-react';
+import { UserPlus, Plus, Search, X, Trash2, Edit } from 'lucide-react';
 
 const sourceLabels = { website: 'Website', referral: 'Referral', social_media: 'Sosmed', campaign: 'Kampanye', cold_call: 'Cold Call', event: 'Event', other: 'Lainnya' };
 const statusLabels = { new: 'Baru', contacted: 'Dihubungi', qualified: 'Qualified', converted: 'Converted', lost: 'Lost' };
@@ -25,6 +25,22 @@ export default function LeadsPage() {
         const url = editing ? `/api/leads/${editing.id}` : '/api/leads';
         await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
         setShowModal(false); fetchLeads();
+    }
+
+    async function handleDelete(id) {
+        if (!confirm('Yakin ingin menghapus lead ini?')) return;
+        try {
+            const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchLeads();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Gagal menghapus lead');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Terjadi kesalahan jaringan. Coba lagi.');
+        }
     }
 
     function getScoreColor(score) {
@@ -56,7 +72,12 @@ export default function LeadsPage() {
                                 <td>{sourceLabels[l.source] || l.source}</td>
                                 <td><div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: getScoreColor(l.score) }} /><strong>{l.score}</strong></div></td>
                                 <td><span className={`badge ${statusBadge[l.status]}`}>{statusLabels[l.status]}</span></td>
-                                <td><button className="btn btn-ghost btn-sm" onClick={() => openEdit(l)}>Edit</button></td>
+                                <td>
+                                    <div className="flex gap-sm">
+                                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(l)} title="Edit"><Edit size={15} /></button>
+                                        <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(l.id)} title="Hapus"><Trash2 size={15} /></button>
+                                    </div>
+                                </td>
                             </tr>
                         ))}</tbody>
                     </table>

@@ -72,6 +72,7 @@ export async function initDatabase() {
 
     ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_code VARCHAR(100) UNIQUE;
     ALTER TABLE customers ADD COLUMN IF NOT EXISTS lead_id INTEGER;
+    UPDATE customers SET customer_code = NULL WHERE customer_code = '';
 
     CREATE TABLE IF NOT EXISTS contacts (
       id SERIAL PRIMARY KEY,

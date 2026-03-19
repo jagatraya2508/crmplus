@@ -156,8 +156,14 @@ export default function CustomersPage() {
             if (res.ok) {
                 setShowModal(false);
                 fetchCustomers();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                alert(errData.error || `Gagal menyimpan data (${res.status})`);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            alert('Terjadi kesalahan jaringan. Coba lagi.');
+        }
     }
 
     async function handleDelete(id) {

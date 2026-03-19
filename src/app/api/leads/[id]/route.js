@@ -16,3 +16,15 @@ export async function PUT(request, { params }) {
         return NextResponse.json({ lead: result.rows[0] });
     } catch (error) { return NextResponse.json({ error: error.message }, { status: 500 }); }
 }
+
+export async function DELETE(request, { params }) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const { id } = await params;
+        await query('DELETE FROM leads WHERE id = $1', [id]);
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
