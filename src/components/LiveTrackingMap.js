@@ -9,21 +9,36 @@ const STATUS_COLORS = {
     offline: '#64748b',
 };
 
-function createMarkerIcon(status) {
+function createMarkerIcon(status, name) {
     const color = STATUS_COLORS[status] || STATUS_COLORS.offline;
     const pulse = status === 'online' ? 'animation:pulse 2s infinite;' : '';
+    
+    // We render a flex container so the name is displayed directly on the map
     return L.divIcon({
-        html: `<div style="
-            background:${color};
-            width:18px;height:18px;
-            border-radius:50%;
-            border:3px solid white;
-            box-shadow:0 0 12px ${color}80;
-            ${pulse}
-            position:relative;
-        "></div>`,
-        iconSize: [18, 18],
-        className: '',
+        html: `<div style="display:flex; align-items:center; gap:6px;">
+                 <div style="
+                    background:${color};
+                    width:16px;min-width:16px;height:16px;
+                    border-radius:50%;
+                    border:3px solid white;
+                    box-shadow:0 0 12px ${color}80;
+                    ${pulse}
+                 "></div>
+                 ${name ? `<div style="
+                    background: white;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #333;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                    white-space: nowrap;
+                    border: 1px solid #e2e8f0;
+                 ">${name}</div>` : ''}
+               </div>`,
+        className: 'custom-map-icon', // Use custom-map-icon so background is transparent
+        iconAnchor: [8, 8], // Center of the 16x16 dot
+        popupAnchor: [0, -8] // Pop up from top of the dot
     });
 }
 
@@ -76,11 +91,11 @@ export default function LiveTrackingMap({ locations = [], historyData = null, se
             if (markersRef.current[key]) {
                 // Update existing marker position
                 markersRef.current[key].setLatLng(latlng);
-                markersRef.current[key].setIcon(createMarkerIcon(loc.status));
+                markersRef.current[key].setIcon(createMarkerIcon(loc.status, loc.user_name));
                 markersRef.current[key].setPopupContent(popupContent);
             } else {
                 // Create new marker
-                const marker = L.marker(latlng, { icon: createMarkerIcon(loc.status) }).addTo(map);
+                const marker = L.marker(latlng, { icon: createMarkerIcon(loc.status, loc.user_name) }).addTo(map);
                 marker.bindPopup(popupContent);
                 markersRef.current[key] = marker;
             }
