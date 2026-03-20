@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react';
 import { MapPin, LogOut, Loader, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import SelfieCapture from '@/components/SelfieCapture';
 import '../../visits.css';
 
 export default function CheckoutPage({ params }) {
@@ -12,6 +13,7 @@ export default function CheckoutPage({ params }) {
     const [coords, setCoords] = useState(null);
     const [address, setAddress] = useState('');
     const [summary, setSummary] = useState('');
+    const [photoData, setPhotoData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -52,9 +54,24 @@ export default function CheckoutPage({ params }) {
 
     async function handleCheckout(e) {
         e.preventDefault();
+        
+        if (!photoData) {
+            setError('Silakan ambil foto selfie untuk Check-out');
+            return;
+        }
+
         setLoading(true);
         setError('');
         try {
+            // Upload photo first
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ photo: photoData, type: 'checkout' })
+            });
+            const uploadData = await uploadRes.json();
+            if (!uploadRes.ok) throw new Error(uploadData.error || 'Gagal mengunggah foto');
+
             const res = await fetch(`/api/visits/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -63,6 +80,7 @@ export default function CheckoutPage({ params }) {
                     checkout_lng: coords?.lng,
                     checkout_address: address,
                     summary,
+                    checkout_photo: uploadData.url
                 }),
             });
             const data = await res.json();
@@ -116,6 +134,13 @@ export default function CheckoutPage({ params }) {
                         <label className="form-label">Ringkasan Kunjungan</label>
                         <textarea className="form-control" rows={4} placeholder="Hasil kunjungan, keputusan, follow-up..." value={summary} onChange={e => setSummary(e.target.value)} />
                     </div>
+
+                    {/* Selfie Photo - Live Camera */}
+                    <SelfieCapture
+                        label="Selfie Check-out"
+                        onCapture={(data) => setPhotoData(data)}
+                    />
+
                     <button type="submit" className="btn btn-warning btn-lg w-full" disabled={loading}>
                         {loading ? <Loader size={20} /> : <><LogOut size={20} /> Check-out Sekarang</>}
                     </button>

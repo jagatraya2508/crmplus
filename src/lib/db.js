@@ -171,11 +171,14 @@ export async function initDatabase() {
       checkin_address TEXT,
       checkout_address TEXT,
       checkin_photo VARCHAR(500),
+      checkout_photo VARCHAR(500),
       notes TEXT,
       summary TEXT,
       status VARCHAR(50) DEFAULT 'checked_in' CHECK (status IN ('checked_in', 'checked_out')),
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE visits ADD COLUMN IF NOT EXISTS checkout_photo VARCHAR(500);
 
     CREATE TABLE IF NOT EXISTS orders (
       id SERIAL PRIMARY KEY,

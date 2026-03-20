@@ -34,7 +34,7 @@ export async function PUT(request, { params }) {
 
         const { id } = await params;
         const body = await request.json();
-        const { checkout_lat, checkout_lng, checkout_address, summary } = body;
+        const { checkout_lat, checkout_lng, checkout_address, summary, checkout_photo } = body;
 
         const visit = await getOne('SELECT * FROM visits WHERE id = $1', [id]);
         if (!visit) return NextResponse.json({ error: 'Kunjungan tidak ditemukan' }, { status: 404 });
@@ -46,9 +46,9 @@ export async function PUT(request, { params }) {
       UPDATE visits SET 
         checkout_time = NOW(),
         checkout_lat = $1, checkout_lng = $2, checkout_address = $3,
-        summary = $4, status = 'checked_out'
-      WHERE id = $5 RETURNING *
-    `, [checkout_lat || null, checkout_lng || null, checkout_address || null, summary || null, id]);
+        summary = $4, checkout_photo = $5, status = 'checked_out'
+      WHERE id = $6 RETURNING *
+    `, [checkout_lat || null, checkout_lng || null, checkout_address || null, summary || null, checkout_photo || null, id]);
 
         return NextResponse.json({ visit: result.rows[0] });
     } catch (error) {

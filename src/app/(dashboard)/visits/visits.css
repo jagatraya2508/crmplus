@@ -102,6 +102,48 @@
     margin-top: 10px;
 }
 
+.visit-photos {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.visit-photo-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.visit-photo-label {
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+
+.visit-photo-thumb {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.visit-photo-thumb:hover {
+    transform: scale(1.05);
+    border-color: var(--accent-primary-light);
+}
+
+.visit-photo-full {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #000;
+}
+
 .coord-tag {
     display: inline-flex;
     align-items: center;

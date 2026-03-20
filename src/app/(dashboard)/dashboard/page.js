@@ -81,22 +81,24 @@ export default function DashboardPage() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-4 mb-lg">
-                {kpiCards.map((kpi, i) => {
-                    const Icon = kpi.icon;
-                    return (
-                        <div key={i} className={`stat-card ${kpi.color}`}>
-                            <div className="stat-icon"><Icon size={24} /></div>
-                            <div className="stat-value">{typeof kpi.value === 'number' ? kpi.value.toLocaleString('id-ID') : kpi.value}</div>
-                            <div className="stat-label">{kpi.label}</div>
-                            <div className={`stat-change ${kpi.up ? 'up' : 'down'}`}>
-                                {kpi.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                                {kpi.change}
+            {(user?.role === 'admin' || user?.role === 'manager') && (
+                <div className="grid grid-4 mb-lg">
+                    {kpiCards.map((kpi, i) => {
+                        const Icon = kpi.icon;
+                        return (
+                            <div key={i} className={`stat-card ${kpi.color}`}>
+                                <div className="stat-icon"><Icon size={24} /></div>
+                                <div className="stat-value">{typeof kpi.value === 'number' ? kpi.value.toLocaleString('id-ID') : kpi.value}</div>
+                                <div className="stat-label">{kpi.label}</div>
+                                <div className={`stat-change ${kpi.up ? 'up' : 'down'}`}>
+                                    {kpi.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                                    {kpi.change}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             <div className="dashboard-grid">
                 {/* Recent Activities */}

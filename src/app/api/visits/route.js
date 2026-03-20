@@ -100,7 +100,7 @@ export async function POST(request) {
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await request.json();
-        const { customer_id, checkin_lat, checkin_lng, checkin_address, notes } = body;
+        const { customer_id, checkin_lat, checkin_lng, checkin_address, notes, checkin_photo } = body;
 
         if (!customer_id) return NextResponse.json({ error: 'Pilih pelanggan terlebih dahulu' }, { status: 400 });
 
@@ -114,10 +114,10 @@ export async function POST(request) {
         }
 
         const result = await query(`
-      INSERT INTO visits (customer_id, user_id, checkin_lat, checkin_lng, checkin_address, notes, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'checked_in')
+      INSERT INTO visits (customer_id, user_id, checkin_lat, checkin_lng, checkin_address, notes, checkin_photo, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'checked_in')
       RETURNING *
-    `, [customer_id, user.id, checkin_lat || null, checkin_lng || null, checkin_address || null, notes || null]);
+    `, [customer_id, user.id, checkin_lat || null, checkin_lng || null, checkin_address || null, notes || null, checkin_photo || null]);
 
         // Create activity log
         await query(`

@@ -2,17 +2,19 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Navigation, Search, LogIn, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import SelfieCapture from '@/components/SelfieCapture';
 import '../visits.css';
 
 export default function CheckinPage() {
     const router = useRouter();
-    const [gpsStatus, setGpsStatus] = useState('detecting'); // detecting, success, error
+    const [gpsStatus, setGpsStatus] = useState('detecting');
     const [coords, setCoords] = useState(null);
     const [address, setAddress] = useState('');
     const [customers, setCustomers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [notes, setNotes] = useState('');
+    const [photoData, setPhotoData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -33,7 +35,6 @@ export default function CheckinPage() {
                 const { latitude, longitude } = position.coords;
                 setCoords({ lat: latitude, lng: longitude });
                 setGpsStatus('success');
-                // Try to get address via reverse geocoding
                 setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
             },
             (err) => {
@@ -66,11 +67,24 @@ export default function CheckinPage() {
             setError('Pilih pelanggan terlebih dahulu');
             return;
         }
+        if (!photoData) {
+            setError('Silakan ambil foto selfie untuk Check-in');
+            return;
+        }
 
         setLoading(true);
         setError('');
 
         try {
+            // Upload photo first
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ photo: photoData, type: 'checkin' })
+            });
+            const uploadData = await uploadRes.json();
+            if (!uploadRes.ok) throw new Error(uploadData.error || 'Gagal mengunggah foto');
+
             const res = await fetch('/api/visits', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -80,6 +94,7 @@ export default function CheckinPage() {
                     checkin_lng: coords?.lng,
                     checkin_address: address,
                     notes,
+                    checkin_photo: uploadData.url
                 }),
             });
 
@@ -170,6 +185,12 @@ export default function CheckinPage() {
                             onChange={e => setNotes(e.target.value)}
                         />
                     </div>
+
+                    {/* Selfie Photo - Live Camera */}
+                    <SelfieCapture
+                        label="Selfie Check-in"
+                        onCapture={(data) => setPhotoData(data)}
+                    />
 
                     {/* Submit */}
                     <button type="submit" className="btn btn-success btn-lg w-full" disabled={loading || !selectedCustomer} style={{ marginTop: 8 }}>

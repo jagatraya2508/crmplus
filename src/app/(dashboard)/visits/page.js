@@ -24,6 +24,7 @@ export default function VisitsPage() {
     const [customers, setCustomers] = useState([]);
     const [saving, setSaving] = useState(false);
     const [expandedMap, setExpandedMap] = useState(null);
+    const [fullPhoto, setFullPhoto] = useState(null);
     const [editForm, setEditForm] = useState({
         customer_id: '',
         notes: '',
@@ -342,6 +343,34 @@ export default function VisitsPage() {
 
                                     {v.notes && <p className="visit-notes">{v.notes}</p>}
                                     {v.summary && <p className="visit-notes" style={{ borderLeftColor: 'var(--accent-success)' }}>{v.summary}</p>}
+
+                                    {/* Photos */}
+                                    {(v.checkin_photo || v.checkout_photo) && (
+                                        <div className="visit-photos">
+                                            {v.checkin_photo && (
+                                                <div className="visit-photo-item">
+                                                    <span className="visit-photo-label">Selfie In</span>
+                                                    <img 
+                                                        src={v.checkin_photo} 
+                                                        className="visit-photo-thumb" 
+                                                        alt="Check-in selfie" 
+                                                        onClick={() => setFullPhoto({ url: v.checkin_photo, title: 'Selfie Check-in' })}
+                                                    />
+                                                </div>
+                                            )}
+                                            {v.checkout_photo && (
+                                                <div className="visit-photo-item">
+                                                    <span className="visit-photo-label">Selfie Out</span>
+                                                    <img 
+                                                        src={v.checkout_photo} 
+                                                        className="visit-photo-thumb" 
+                                                        alt="Check-out selfie" 
+                                                        onClick={() => setFullPhoto({ url: v.checkout_photo, title: 'Selfie Check-out' })}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="visit-actions">
                                     {v.status === 'checked_in' && (
@@ -460,6 +489,20 @@ export default function VisitsPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Full Photo Modal */}
+            {fullPhoto && (
+                <div className="modal-overlay" onClick={() => setFullPhoto(null)}>
+                    <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, padding: 0, overflow: 'hidden' }}>
+                        <div className="modal-header" style={{ padding: '12px 16px' }}>
+                            <h3 style={{ fontSize: '1rem' }}>{fullPhoto.title}</h3>
+                            <button className="btn btn-ghost btn-icon" onClick={() => setFullPhoto(null)}><X size={18} /></button>
+                        </div>
+                        <div style={{ background: '#000', lineHeight: 0 }}>
+                            <img src={fullPhoto.url} className="visit-photo-full" alt="Full selfie" />
+                        </div>
                     </div>
                 </div>
             )}

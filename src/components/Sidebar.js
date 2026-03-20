@@ -26,14 +26,14 @@ const menuItems = [
     { href: '/settings', icon: Settings, label: 'Pengaturan' },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, mobileOpen, onToggle }) {
     const pathname = usePathname();
     const { user, settings } = useAuth();
 
     const visibleItems = menuItems.filter(item => !item.adminOnly || user?.role === 'admin');
 
     return (
-        <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+        <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
             <div className="sidebar-header">
                 <div className={`sidebar-logo ${!settings?.app_logo ? 'fallback-logo' : ''}`}>
                     {settings?.app_logo ? (
