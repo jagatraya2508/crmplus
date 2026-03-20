@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { UserPlus, Plus, Search, X, Trash2, Edit } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { UserPlus, Plus, Search, X, Trash2, Edit, ChevronUp, ChevronDown } from 'lucide-react';
 
 const sourceLabels = { website: 'Website', referral: 'Referral', social_media: 'Sosmed', campaign: 'Kampanye', cold_call: 'Cold Call', event: 'Event', other: 'Lainnya' };
 const statusLabels = { new: 'Baru', contacted: 'Dihubungi', qualified: 'Qualified', converted: 'Converted', lost: 'Lost' };
@@ -12,6 +12,7 @@ export default function LeadsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ lead_code: '', name: '', email: '', phone: '', company: '', source: 'website', score: 0, status: 'new', notes: '' });
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
     useEffect(() => { fetchLeads(); }, []);
     async function fetchLeads() { setLoading(true); const res = await fetch('/api/leads'); const data = await res.json(); setLeads(data.leads || []); setLoading(false); }
@@ -43,6 +44,60 @@ export default function LeadsPage() {
         }
     }
 
+    const sortedLeads = useMemo(() => {
+        let sortableItems = [...leads];
+        if (sortConfig !== null && sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+                
+                if (sortConfig.key === 'score') {
+                    aValue = parseFloat(aValue) || 0;
+                    bValue = parseFloat(bValue) || 0;
+                } else if (sortConfig.key === 'status') {
+                    aValue = (statusLabels[a.status] || a.status || '').toLowerCase();
+                    bValue = (statusLabels[b.status] || b.status || '').toLowerCase();
+                } else if (sortConfig.key === 'source') {
+                    aValue = (sourceLabels[a.source] || a.source || '').toLowerCase();
+                    bValue = (sourceLabels[b.source] || b.source || '').toLowerCase();
+                } else {
+                    aValue = (aValue || '').toString().toLowerCase();
+                    bValue = (bValue || '').toString().toLowerCase();
+                }
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [leads, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (
+            sortConfig &&
+            sortConfig.key === key &&
+            sortConfig.direction === 'ascending'
+        ) {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const renderSortIcon = (columnKey) => {
+        if (!sortConfig || sortConfig.key !== columnKey) {
+            return <span style={{ width: 14, display: 'inline-block', marginLeft: '4px' }}></span>;
+        }
+        return sortConfig.direction === 'ascending' 
+            ? <ChevronUp size={14} style={{ marginLeft: '4px', verticalAlign: 'middle', display: 'inline-block' }} /> 
+            : <ChevronDown size={14} style={{ marginLeft: '4px', verticalAlign: 'middle', display: 'inline-block' }} />;
+    };
+
     function getScoreColor(score) {
         if (score >= 80) return 'var(--accent-success)';
         if (score >= 50) return 'var(--accent-warning)';
@@ -63,8 +118,18 @@ export default function LeadsPage() {
             ) : (
                 <div className="table-container">
                     <table className="table">
-                        <thead><tr><th>ID Lead</th><th>Nama</th><th>Perusahaan</th><th>Sumber</th><th>Score</th><th>Status</th><th>Aksi</th></tr></thead>
-                        <tbody>{leads.map(l => (
+                        <thead>
+                            <tr>
+                                <th onClick={() => requestSort('lead_code')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>ID Lead {renderSortIcon('lead_code')}</div></th>
+                                <th onClick={() => requestSort('name')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Nama {renderSortIcon('name')}</div></th>
+                                <th onClick={() => requestSort('company')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Perusahaan {renderSortIcon('company')}</div></th>
+                                <th onClick={() => requestSort('source')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Sumber {renderSortIcon('source')}</div></th>
+                                <th onClick={() => requestSort('score')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Score {renderSortIcon('score')}</div></th>
+                                <th onClick={() => requestSort('status')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Status {renderSortIcon('status')}</div></th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>{sortedLeads.map(l => (
                             <tr key={l.id}>
                                 <td><span className="badge badge-secondary">{l.lead_code || '-'}</span></td>
                                 <td><strong>{l.name}</strong><br /><span className="text-sm text-muted">{l.email || l.phone || '-'}</span></td>

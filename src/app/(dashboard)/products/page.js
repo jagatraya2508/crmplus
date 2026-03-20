@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, Search, X, Printer, FileText, FileSpreadsheet, Download } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Package, Plus, Edit, Trash2, Search, X, Printer, FileText, FileSpreadsheet, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -13,7 +13,7 @@ export default function ProductsPage() {
     const [editing, setEditing] = useState(null);
     const [masterCategories, setMasterCategories] = useState([]);
     const [form, setForm] = useState({ name: '', sku: '', description: '', price: 0, unit: 'pcs', category: '', category_2: '', category_3: '', sub_category: '', brand: '', model: '', stock: 0 });
-
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     useEffect(() => { 
         fetchProducts(); 
         fetchMasterCategories();
@@ -55,6 +55,54 @@ export default function ProductsPage() {
 
     let timeout;
     function onSearch(v) { clearTimeout(timeout); timeout = setTimeout(() => setSearch(v), 300); }
+
+    const sortedProducts = useMemo(() => {
+        let sortableItems = [...products];
+        if (sortConfig !== null && sortConfig.key) {
+            sortableItems.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+                
+                if (sortConfig.key === 'price' || sortConfig.key === 'stock') {
+                    aValue = parseFloat(aValue) || 0;
+                    bValue = parseFloat(bValue) || 0;
+                } else {
+                    aValue = (aValue || '').toString().toLowerCase();
+                    bValue = (bValue || '').toString().toLowerCase();
+                }
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [products, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (
+            sortConfig &&
+            sortConfig.key === key &&
+            sortConfig.direction === 'ascending'
+        ) {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const renderSortIcon = (columnKey) => {
+        if (!sortConfig || sortConfig.key !== columnKey) {
+            return <span style={{ width: 14, display: 'inline-block', marginLeft: '4px' }}></span>;
+        }
+        return sortConfig.direction === 'ascending' 
+            ? <ChevronUp size={14} style={{ marginLeft: '4px', verticalAlign: 'middle', display: 'inline-block' }} /> 
+            : <ChevronDown size={14} style={{ marginLeft: '4px', verticalAlign: 'middle', display: 'inline-block' }} />;
+    };
 
     const [isExporting, setIsExporting] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
@@ -166,15 +214,33 @@ export default function ProductsPage() {
             ) : (
                 <div className="table-container">
                     <table className="table">
-                        <thead><tr><th>Product ID</th><th>Nama</th><th>SKU</th><th>Harga</th><th>Stok</th><th>Satuan</th><th>Aksi</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th onClick={() => requestSort('product_code')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Product ID {renderSortIcon('product_code')}</div></th>
+                                <th onClick={() => requestSort('name')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Nama {renderSortIcon('name')}</div></th>
+                                <th onClick={() => requestSort('sku')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>SKU {renderSortIcon('sku')}</div></th>
+                                <th onClick={() => requestSort('category')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Category {renderSortIcon('category')}</div></th>
+                                <th onClick={() => requestSort('brand')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Brand {renderSortIcon('brand')}</div></th>
+                                <th onClick={() => requestSort('category_2')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Type {renderSortIcon('category_2')}</div></th>
+                                <th onClick={() => requestSort('model')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Model {renderSortIcon('model')}</div></th>
+                                <th onClick={() => requestSort('price')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Harga {renderSortIcon('price')}</div></th>
+                                <th onClick={() => requestSort('stock')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Stok {renderSortIcon('stock')}</div></th>
+                                <th onClick={() => requestSort('unit')} style={{cursor: 'pointer'}}><div style={{display: 'flex', alignItems: 'center'}}>Satuan {renderSortIcon('unit')}</div></th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            {products.map(p => (
+                            {sortedProducts.map(p => (
                                 <tr key={p.id}>
                                     <td>{p.product_code || '-'}</td>
                                     <td>
                                         <strong>{p.name}</strong>
                                     </td>
                                     <td>{p.sku || '-'}</td>
+                                    <td>{p.category || '-'}</td>
+                                    <td>{p.brand || '-'}</td>
+                                    <td>{p.category_2 || '-'}</td>
+                                    <td>{p.model || '-'}</td>
                                     <td>Rp {parseFloat(p.price).toLocaleString('id-ID')}</td>
                                     <td>{p.stock}</td>
                                     <td>{p.unit}</td>

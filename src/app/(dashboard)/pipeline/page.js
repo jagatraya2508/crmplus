@@ -1,6 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { GitBranch, Plus, DollarSign, User, Calendar, X, Edit2, Trash2, ArrowRight } from 'lucide-react';
+import { GitBranch, Plus, DollarSign, User, Calendar, X, Edit2, Trash2, ArrowRight, Printer, FileText, FileSpreadsheet, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './pipeline.css';
 
 export default function PipelinePage() {
@@ -12,6 +15,8 @@ export default function PipelinePage() {
     const [mode, setMode] = useState('new'); // 'new' or 'pull'
     const [selectedPullId, setSelectedPullId] = useState('');
     const [form, setForm] = useState({ title: '', customer_id: '', stage_id: '', value: 0, probability: 50, expected_close: '', description: '' });
+    const [isExporting, setIsExporting] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
 
     useEffect(() => {
         fetchPipeline();
@@ -114,6 +119,101 @@ export default function PipelinePage() {
 
     const totalValue = stages.reduce((sum, s) => sum + s.opportunities.reduce((s2, o) => s2 + parseFloat(o.value || 0), 0), 0);
 
+    async function handleExportExcel() {
+        setIsExporting(true);
+        try {
+            let data = [];
+            stages.forEach(stage => {
+                stage.opportunities.forEach(opp => {
+                    data.push({
+                        'Judul Deal': opp.title,
+                        'Pelanggan': opp.customer_name || '-',
+                        'Stage': stage.name,
+                        'Nilai': parseFloat(opp.value || 0),
+                        'Probabilitas (%)': opp.probability || 0,
+                        'Target Close': opp.expected_close ? new Date(opp.expected_close).toLocaleDateString('id-ID') : '-',
+                        'Sales Person': opp.assigned_name || '-'
+                    });
+                });
+            });
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Sales Pipeline');
+            XLSX.writeFile(wb, 'Sales_Pipeline.xlsx');
+        } catch (e) { console.error(e); alert('Gagal export Excel'); }
+        setIsExporting(false); setShowExportMenu(false);
+    }
+
+    async function handleExportPDF() {
+        setIsExporting(true);
+        try {
+            const doc = new jsPDF('landscape');
+            doc.setFontSize(16); doc.text('Laporan Sales Pipeline', 14, 15);
+            doc.setFontSize(10); doc.text('Tanggal cetak: ' + new Date().toLocaleDateString('id-ID') + ' | Total Penawaran: Rp ' + totalValue.toLocaleString('id-ID'), 14, 22);
+            
+            let tableData = [];
+            stages.forEach(stage => {
+                stage.opportunities.forEach((opp, i) => {
+                    tableData.push([
+                        tableData.length + 1,
+                        opp.title,
+                        opp.customer_name || '-',
+                        stage.name,
+                        'Rp ' + parseFloat(opp.value || 0).toLocaleString('id-ID'),
+                        (opp.probability || 0) + '%',
+                        opp.expected_close ? new Date(opp.expected_close).toLocaleDateString('id-ID') : '-',
+                        opp.assigned_name || '-'
+                    ]);
+                });
+            });
+
+            autoTable(doc, {
+                head: [['No', 'Judul Deal', 'Pelanggan', 'Stage', 'Nilai', 'Probabilitas', 'Target Close', 'Sales Person']],
+                body: tableData, startY: 27,
+                styles: { fontSize: 9 }, headStyles: { fillColor: [59, 130, 246] },
+            });
+            doc.save('Sales_Pipeline.pdf');
+        } catch (e) { console.error(e); alert('Gagal export PDF'); }
+        setIsExporting(false); setShowExportMenu(false);
+    }
+
+    function handlePrint() {
+        setIsExporting(true);
+        try {
+            let rows = '';
+            let count = 0;
+            stages.forEach(stage => {
+                stage.opportunities.forEach((opp) => {
+                    count++;
+                    rows += '<tr>';
+                    rows += '<td>' + count + '</td>';
+                    rows += '<td><strong>' + opp.title + '</strong></td>';
+                    rows += '<td>' + (opp.customer_name || '-') + '</td>';
+                    rows += '<td>' + stage.name + '</td>';
+                    rows += '<td style="text-align:right">Rp ' + parseFloat(opp.value || 0).toLocaleString('id-ID') + '</td>';
+                    rows += '<td style="text-align:center">' + (opp.probability || 0) + '%</td>';
+                    rows += '<td>' + (opp.expected_close ? new Date(opp.expected_close).toLocaleDateString('id-ID') : '-') + '</td>';
+                    rows += '<td>' + (opp.assigned_name || '-') + '</td>';
+                    rows += '</tr>';
+                });
+            });
+            const pw = window.open('', '_blank');
+            pw.document.write(
+                '<!DOCTYPE html><html><head><title>Laporan Sales Pipeline</title>' +
+                '<style>body{font-family:Arial,sans-serif;padding:20px}table{width:100%;border-collapse:collapse;margin-top:16px}' +
+                'th,td{border:1px solid #ddd;padding:8px;font-size:12px}th{background:#3b82f6;color:white;text-align:left}' +
+                'tr:nth-child(even){background:#f8fafc}h1{font-size:18px;color:#1a1a2e;margin-bottom:5px;}p{margin-top:0;} </style></head>' +
+                '<body><h1>Laporan Sales Pipeline</h1>' +
+                '<p>Tanggal cetak: ' + new Date().toLocaleDateString('id-ID') + ' &bull; Total Penawaran: <strong>Rp ' + totalValue.toLocaleString('id-ID') + '</strong></p>' +
+                '<table><thead><tr><th>No</th><th>Judul Deal</th><th>Pelanggan</th><th>Stage</th><th>Nilai</th><th>Probabilitas</th><th>Target Close</th><th>Sales Person</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody></table></body></html>'
+            );
+            pw.document.close(); pw.focus();
+            setTimeout(() => { pw.print(); }, 500);
+        } catch (e) { console.error(e); alert('Gagal mencetak'); }
+        setIsExporting(false); setShowExportMenu(false);
+    }
+
     if (loading) return <div className="loading-center"><div className="spinner" /></div>;
 
     return (
@@ -123,7 +223,22 @@ export default function PipelinePage() {
                     <h1 className="page-title">Sales Pipeline</h1>
                     <p className="page-subtitle">Total pipeline: Rp {totalValue.toLocaleString('id-ID')}</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => openAdd('')}><Plus size={18} /> Tambah Deal</button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative' }}>
+                        <button className="btn btn-outline" onClick={() => setShowExportMenu(!showExportMenu)} disabled={isExporting}>
+                            {isExporting ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <Download size={16} />} 
+                            <span style={{ marginLeft: 8 }}>Export</span>
+                        </button>
+                        {showExportMenu && (
+                            <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
+                                <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'white', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f1f5f9' }}><Printer size={15} /> Cetak (Print)</button>
+                                <button onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'white', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f1f5f9' }}><FileText size={15} /> Download PDF</button>
+                                <button onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', border: 'none', background: 'white', cursor: 'pointer', fontSize: 13 }}><FileSpreadsheet size={15} /> Download Excel</button>
+                            </div>
+                        )}
+                    </div>
+                    <button className="btn btn-primary" onClick={() => openAdd('')}><Plus size={18} /> Tambah Deal</button>
+                </div>
             </div>
 
             <div className="pipeline-board">
